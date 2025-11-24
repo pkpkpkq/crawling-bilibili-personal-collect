@@ -2,9 +2,12 @@ import json
 import math
 import os
 import string
+import logging
 
 from openpyxl import Workbook
 from openpyxl.drawing.image import Image
+from PIL import UnidentifiedImageError, Image as PILImage
+from io import BytesIO
 from openpyxl.drawing.spreadsheet_drawing import AnchorMarker, OneCellAnchor
 from openpyxl.drawing.xdr import XDRPositiveSize2D
 from openpyxl.styles import Alignment, Font, Border, Side, Color, PatternFill, colors
@@ -137,34 +140,80 @@ def SetIntro(ws, intro, i):
 
 def SetCover(ws, img_file, i):
     ws.merge_cells(start_row=i, start_column=1, end_row=i + 7, end_column=2)
+    logging.debug(f"Processing cover image: {img_file}")
     if not os.path.exists(img_file):
+        logging.debug(f"File does not exist, skipping: {img_file}")
         return
-    img = Image(img_file)
-    if img.width / img.height > MaxWidth_cover / MaxHeight_cover:
-        img.height = img.height * MaxWidth_cover / img.width
-        img.width = MaxWidth_cover
-    else:
-        img.width = img.width * MaxHeight_cover / img.height
-        img.height = MaxHeight_cover
+    try:
+        # Manually open with PIL, convert to PNG in-memory, and pass the buffer to openpyxl.
+        # This standardizes all formats and avoids both .webp and closed file errors.
+        pil_img = PILImage.open(img_file)
+        
+        buffer = BytesIO()
+        pil_img.convert("RGB").save(buffer, format='PNG')
+        pil_img.close() # Close the source file explicitly
+        
+        buffer.seek(0)
+        img = Image(buffer) # Create openpyxl image from the open buffer
 
+        # Now perform sizing on the openpyxl Image object
+        if img.width / img.height > MaxWidth_cover / MaxHeight_cover:
+            img.height = img.height * MaxWidth_cover / img.width
+            img.width = MaxWidth_cover
+        else:
+            img.width = img.width * MaxHeight_cover / img.height
+            img.height = MaxHeight_cover
+
+    except UnidentifiedImageError:
+        logging.warning(f"UnidentifiedImageError caught for {img_file}")
+        return
+    except Exception as e:
+        logging.error(f"An unexpected error occurred in SetCover for {img_file}: {e}")
+        return
+    
+    logging.debug(f"Image sized. Adding to worksheet: {img_file}")
     offset_img(img, i - 1, 0)
     ws.add_image(img)
+    logging.debug(f"Image added to worksheet: {img_file}")
 
 
 def SetFace(ws, img_file, i):
     ws.merge_cells(start_row=i, start_column=9, end_row=i + 1, end_column=9)
+    logging.debug(f"Processing face image: {img_file}")
     if not os.path.exists(img_file):
+        logging.debug(f"File does not exist, skipping: {img_file}")
         return
-    img = Image(img_file)
+    try:
+        # Manually open with PIL, convert to PNG in-memory, and pass the buffer to openpyxl.
+        # This standardizes all formats and avoids both .webp and closed file errors.
+        pil_img = PILImage.open(img_file)
 
-    if img.width / img.height > MaxWidth_face / MaxHeight_face:
-        img.height = img.height * MaxWidth_face / img.width
-        img.width = MaxWidth_face
-    else:
-        img.width = img.width * MaxHeight_face / img.height
-        img.height = MaxHeight_face
+        buffer = BytesIO()
+        pil_img.convert("RGB").save(buffer, format='PNG')
+        pil_img.close() # Close the source file explicitly
+
+        buffer.seek(0)
+        img = Image(buffer) # Create openpyxl image from the open buffer
+
+        # Now perform sizing on the openpyxl Image object
+        if img.width / img.height > MaxWidth_face / MaxHeight_face:
+            img.height = img.height * MaxWidth_face / img.width
+            img.width = MaxWidth_face
+        else:
+            img.width = img.width * MaxHeight_face / img.height
+            img.height = MaxHeight_face
+
+    except UnidentifiedImageError:
+        logging.warning(f"UnidentifiedImageError caught for {img_file}")
+        return
+    except Exception as e:
+        logging.error(f"An unexpected error occurred in SetFace for {img_file}: {e}")
+        return
+
+    logging.debug(f"Image sized. Adding to worksheet: {img_file}")
     offset_img(img, i - 1, 8)
     ws.add_image(img)
+    logging.debug(f"Image added to worksheet: {img_file}")
 
 
 def SetNumber(ws, i):
@@ -211,7 +260,7 @@ def SetSome(ws, value_list, i):
 
 def view(RPath, WPath):
     file_name_list = os.listdir(RPath)
-    print(file_name_list)
+    logging.info(f"Found favorite folders: {file_name_list}")
     if os.path.exists(WPath):
         os.remove(WPath)
     wb = Workbook()
@@ -219,10 +268,10 @@ def view(RPath, WPath):
     # 遍历每一个文件
     for i in file_name_list:
         ws = wb.create_sheet(i.split('.')[0])
-        print(i)
+        logging.info(f"Processing favorite folder: {i}")
 
         # 图片文件夹
-        Photo_cover_path = '视频封面/' + i.split('.')[0] + '/'
+        Photo_cover_path = os.path.join('视频封面', i.split('.')[0], '')
         Photo_face_path = 'up头像/'
 
         # 改变前8行列宽
@@ -231,7 +280,7 @@ def view(RPath, WPath):
             ws.column_dimensions[j].width = 20
 
         count = 1
-        with open('收藏夹信息/' + i, 'r', encoding='utf-8') as fp:
+        with open(os.path.join('收藏夹信息', i), 'r', encoding='utf-8') as fp:
             data = json.load(fp)
             for k, v in data.items():
                 # 设置边框
@@ -260,5 +309,6 @@ def view(RPath, WPath):
                 if v['是否失效']:
                     MarkDeleted(ws, count)
                 count += 10
+    logging.info(f"Saving workbook to {WPath}")
     wb.save(WPath)
-    wb.save(WPath)
+    logging.info("Workbook saved successfully.")

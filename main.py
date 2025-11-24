@@ -1,6 +1,7 @@
 import json
 import os
 import time
+import logging
 from concurrent import futures
 from viewing import view
 import requests
@@ -50,14 +51,14 @@ def CompareLastTime(ReadPath, NewData):
     # 视频被删除，则保留上次的数据，并且标记
     for i in list(NewData.values()):
         if i['视频信息']['标题'] == "已失效视频" and str(i['id']) in OldData.keys():
-            print(OldData[str(i['id'])]['视频信息']['标题'] + '失效了')
+            logging.info(f"{OldData[str(i['id'])]['视频信息']['标题']} 已失效")
             OldData[str(i['id'])]['是否失效'] = True
             NewData[str(i['id'])] = OldData[str(i['id'])]
 
     # 自己取消收藏，标记
     for i in list(OldData.values()):
         if i['id'] not in NewData.keys():
-            print(i['视频信息']['标题'] + '取消了收藏')
+            logging.info(f"{i['视频信息']['标题']} 已取消收藏")
             OldData[str(i['id'])]['是否取消了收藏'] = True
             NewData[str(i['id'])] = OldData[str(i['id'])]
 
@@ -68,7 +69,8 @@ def CompareLastTime(ReadPath, NewData):
 def GetFavoriteID(WritePath, UID):
     # 请求头
     headers = {
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36'
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36',
+        'Referer': 'https://www.bilibili.com/'
     }
     url = 'https://api.bilibili.com/x/v3/fav/folder/created/list-all'
     params = {
@@ -80,7 +82,7 @@ def GetFavoriteID(WritePath, UID):
 
     with open(WritePath + '收藏夹id.json', 'w', encoding='utf-8') as fp:
         json.dump(assign, fp, ensure_ascii=False)
-    print('收藏夹id爬取成功')
+    logging.info('收藏夹id爬取成功')
 
 
 # 爬取一个收藏夹信息，Media_Id代表收藏夹，MaxPage代表收藏夹的页数
@@ -120,8 +122,9 @@ def GetOneFavorite(Media_Id, MaxPage):
 
     data = {}
     # 遍历爬取一个收藏夹的不同页数，然后合并到一个字典里
-    for params['pn'] in range(MaxPage)[1::]:
-        print('第' + str(params['pn']) + '页')
+    for pn in range(1, MaxPage):
+        params['pn'] = pn
+        logging.info(f"正在爬取第 {pn} 页")
 
         response = requests.get(url=url, params=params, headers=headers).json()
         medias_list = response['data']['medias']
@@ -140,112 +143,142 @@ def GetALLFavorite(WritePath):
 
     # 遍历所有收藏夹，爬取所有收藏夹
     for i in ID_list:
-        print('爬取中...当前正在爬取' + i['title'])
-        filename = WritePath + i['title'] + '.json'
+        logging.info(f"爬取中...当前正在爬取 {i['title']}")
+        filename = os.path.join(WritePath, i['title'] + '.json')
 
         # 获得一个收藏夹信息，经过处理后一个json文件中
         data = GetOneFavorite(i['id'], math.ceil(i['media_count'] / 20) + 1)
         a_fav_data = CompareLastTime(filename, ProcessRawData(data))
         with open(filename, 'w', encoding='utf-8') as f:
-            json.dump(a_fav_data, f, ensure_ascii=False)
+            json.dump(a_fav_data, f, ensure_ascii=False, indent=4)
 
     os.remove(WritePath + '收藏夹id.json')
-    print('所有收藏夹爬取完毕！！！')
+    logging.info('所有收藏夹爬取完毕！！！')
 
 
-def SetPhotoURl(ReadPath):
+def SetPhotoURL(ReadPath):
     file_name_list = os.listdir(ReadPath)
     Cover_dict = {}
     Face_dict = {}
     for i in file_name_list:
         cover_url = {}  # 视频封面按收藏夹分类
-        with open(ReadPath + i, 'r', encoding='utf-8') as f1:
+        with open(os.path.join(ReadPath, i), 'r', encoding='utf-8') as f1:
             data = json.load(f1)
         for j in data.values():
             if j['是否失效']:
                 cover_url['已失效视频'] = j['视频信息']['封面']
-                print(j['视频信息']['标题'] + '已失效')
+                logging.info(f"{j['视频信息']['标题']} 已失效")
             else:
                 cover_url[j['BV']] = j['视频信息']['封面']
             Face_dict[j['up主']['ID']] = j['up主']['头像']
 
         Cover_dict[i.split('.')[0]] = cover_url
     with open('视频封面url.json', 'w', encoding='utf-8') as fp:
-        json.dump(Cover_dict, fp, ensure_ascii=False)
+        json.dump(Cover_dict, fp, ensure_ascii=False, indent=4)
     with open('up头像url.json', 'w', encoding='utf-8') as fp:
-        json.dump(Face_dict, fp, ensure_ascii=False)
+        json.dump(Face_dict, fp, ensure_ascii=False, indent=4)
 
 
 # 爬取视频封面
 def GetCover(PhotoURL_filename):
-    count, MaxCount = 0, 0
     with open(PhotoURL_filename, 'r', encoding='utf-8') as fp:
         PhotoURL_dict = json.load(fp)
-    for i in PhotoURL_dict.values():
-        MaxCount += len(i.values())
 
-    for fav_name in PhotoURL_dict.keys():
-        url_list = []  # 放多个url进行多线程
-        # 视频封面按收藏夹分类
-        Cover_Path = '视频封面/' + fav_name + '/'
-        if not os.path.exists(Cover_Path):
-            os.makedirs(Cover_Path)
-        url_list = []  # 放多个url进行多线程
-        fav_count = 0
-        for BV, url in PhotoURL_dict[fav_name].items():
-            count += 1
-            fav_count += 1
-            message = '[' + str(count) + '/' + str(MaxCount) + ']:视频封面' + BV + fav_name + '[' + str(
-                fav_count) + '/' + str(len(PhotoURL_dict[fav_name])) + ']'
-            print(message)
-            url_list.append(url)
-            fs = []
-            if len(url_list) == 5 or fav_count == len(PhotoURL_dict[fav_name]):
-                executor = futures.ThreadPoolExecutor(max_workers=5)
-                while len(url_list) != 0:
-                    f = executor.submit(requests.get, url_list.pop())
-                    # print(message)
-                    fs.append(f)
-                futures.wait(fs)
-                result = [f.result().content for f in fs]
-                print(fav_count)
-                for i in range(len(result)):
-                    with open(Cover_Path + list(PhotoURL_dict[fav_name].keys())[fav_count - 1 - i] + '.jpg',
-                              'wb') as fp:
-                        print(fav_count - 1 - i)
-                        fp.write(result[i])
+    MaxCount = sum(len(v) for v in PhotoURL_dict.values())
+    current_count = 0
+    headers = {
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36',
+        'Referer': 'https://www.bilibili.com/'
+    }
+
+    with futures.ThreadPoolExecutor(max_workers=5) as executor:
+        future_to_info = {}
+
+        for fav_name, videos in PhotoURL_dict.items():
+            Cover_Path = os.path.join('视频封面', fav_name)
+            if not os.path.exists(Cover_Path):
+                os.makedirs(Cover_Path)
+            
+            for bv, url in videos.items():
+                current_count += 1
+                message = f"[{current_count}/{MaxCount}]:视频封面 {bv} ({fav_name})"
+                logging.info(message)
+                
+                if url and isinstance(url, str) and url.startswith(('http://', 'https://')):
+                    future = executor.submit(requests.get, url, headers=headers)
+                    future_to_info[future] = {"bv": bv, "path": Cover_Path}
+                else:
+                    logging.warning(f'已跳过无效的URL (bv: {bv}): "{url}"')
+
+        for future in futures.as_completed(future_to_info):
+            info = future_to_info[future]
+            bv = info['bv']
+            path = info['path']
+            try:
+                response = future.result()
+                if response.status_code == 200:
+                    # Basic check to see if content is an image
+                    if 'image' in response.headers.get('Content-Type', ''):
+                        with open(os.path.join(path, f'{bv}.jpg'), 'wb') as f1:
+                            f1.write(response.content)
+                    else:
+                        logging.warning(f'bv {bv} 的URL内容似乎不是图片, Content-Type: {response.headers.get("Content-Type")}')
+                else:
+                    logging.warning(f'bv {bv} 的封面爬取失败，状态码: {response.status_code}')
+            except Exception as exc:
+                logging.error(f'bv {bv} 的封面爬取失败，出现异常: {exc}')
 
 
 def GetFace(PhotoURL_filename):
     with open(PhotoURL_filename, 'r', encoding='utf-8') as fp:
         PhotoURL_dict = json.load(fp)
-    count, MaxCount = 0, len(PhotoURL_dict)
-
+    
     Face_Path = 'up头像/'
     if not os.path.exists(Face_Path):
         os.makedirs(Face_Path)
 
-    url_list = []  # 放多个url进行多线程
-    for ID, url in PhotoURL_dict.items():
-        count += 1
-        message = '[' + str(count) + '/' + str(MaxCount) + ']:up头像' + ID
-        print(message)
-        url_list.append(url)
-        fs = []
-        if len(url_list) == 5 or count == MaxCount:
-            executor = futures.ThreadPoolExecutor(max_workers=5)
-            while len(url_list) != 0:
-                f = executor.submit(requests.get, url_list.pop())
-                # print(message)
-                fs.append(f)
-            futures.wait(fs)
-            result = [f.result().content for f in fs]
-            for i in range(len(result)):
-                with open(Face_Path + list(PhotoURL_dict.keys())[count - 1 - i] + '.jpg', 'wb') as fp:
-                    fp.write(result[i])
+    headers = {
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36',
+        'Referer': 'https://www.bilibili.com/'
+    }
+
+    with futures.ThreadPoolExecutor(max_workers=5) as executor:
+        future_to_mid = {}
+        count = 0
+        MaxCount = len(PhotoURL_dict)
+        
+        for mid, url in PhotoURL_dict.items():
+            count += 1
+            message = f"[{count}/{MaxCount}]:up头像{mid}"
+            logging.info(message)
+            
+            if url and isinstance(url, str) and url.startswith(('http://', 'https://')):
+                future = executor.submit(requests.get, url, headers=headers)
+                future_to_mid[future] = mid
+            else:
+                logging.warning(f'已跳过无效的URL (mid: {mid}): "{url}"')
+
+        for future in futures.as_completed(future_to_mid):
+            mid = future_to_mid[future]
+            try:
+                response = future.result()
+                if response.status_code == 200:
+                    with open(os.path.join(Face_Path, f'{mid}.jpg'), 'wb') as f1:
+                        f1.write(response.content)
+                else:
+                    logging.warning(f'mid为 {mid} 的头像爬取失败，状态码: {response.status_code}')
+            except Exception as exc:
+                logging.error(f'mid为 {mid} 的头像爬取失败，出现异常: {exc}')
 
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(module)s - %(message)s',
+        filename='bilibili_crawler.log',
+        filemode='w'
+    )
+
     path1 = '收藏夹信息/'  # 存放信息的文件夹
     path2 = '视频封面/'  # 放视频封面的文件夹
     path3 = 'up头像/'  # 放up主头像的文件夹
@@ -261,7 +294,7 @@ if __name__ == "__main__":
     STime = time.perf_counter()
     GetFavoriteID(path1, 2015058255)  # 自己账号的uid
     GetALLFavorite(path1)
-    SetPhotoURl(path1)
+    SetPhotoURL(path1)
     GetCover('视频封面url.json')
     GetFace('up头像url.json')
     ETime = time.perf_counter()
@@ -271,5 +304,5 @@ if __name__ == "__main__":
     view(path1, './收藏夹信息.xlsx')
     ETime = time.perf_counter()
     time_list.append(time.strftime("%M:%S", time.gmtime(ETime - STime)))
-    print('执行爬取代码所用时间：' + time_list[0])  # 视收藏视频数量和网速而定，800视频大概五分钟
-    print('将数据写入excel文件所用时间' + time_list[1])  # 800视频大概两分半钟
+    logging.info(f"执行爬取代码所用时间：{time_list[0]}")
+    logging.info(f"将数据写入excel文件所用时间: {time_list[1]}")

@@ -1,0 +1,8 @@
+.venv
+__pycache__/
+收藏夹信息/
+视频封面/
+up头像/
+*.json
+*.log
+*.xlsx
