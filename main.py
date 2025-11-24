@@ -276,7 +276,8 @@ if __name__ == "__main__":
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(module)s - %(message)s',
         filename='bilibili_crawler.log',
-        filemode='w'
+        filemode='w',
+        encoding='utf-8'
     )
 
     path1 = '收藏夹信息/'  # 存放信息的文件夹
