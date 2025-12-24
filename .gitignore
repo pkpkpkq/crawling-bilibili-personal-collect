@@ -6,3 +6,5 @@ up头像/
 *.json
 *.log
 *.xlsx
+html_report/
+*.html

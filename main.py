@@ -195,15 +195,20 @@ def GetCover(PhotoURL_filename):
         future_to_info = {}
 
         for fav_name, videos in PhotoURL_dict.items():
-            Cover_Path = os.path.join('视频封面', fav_name)
+            Cover_Path = os.path.join('html_report', '视频封面', fav_name)
             if not os.path.exists(Cover_Path):
                 os.makedirs(Cover_Path)
-            
+
+            folder_count = len(videos)
+            # 计算该收藏夹在总数中的进度范围，避免除以0
+            start_count = current_count
+            end_count = current_count + folder_count
+            start_percent = int(start_count / MaxCount * 100) if MaxCount else 100
+            end_percent = int(end_count / MaxCount * 100) if MaxCount else 100
+            logging.info(f"[{start_percent}% -> {end_percent}%] 开始爬取收藏夹 \"{fav_name}\" 共 {folder_count} 个封面")
+
             for bv, url in videos.items():
                 current_count += 1
-                message = f"[{current_count}/{MaxCount}]:视频封面 {bv} ({fav_name})"
-                logging.info(message)
-                
                 if url and isinstance(url, str) and url.startswith(('http://', 'https://')):
                     future = executor.submit(requests.get, url, headers=headers)
                     future_to_info[future] = {"bv": bv, "path": Cover_Path}
@@ -233,7 +238,7 @@ def GetFace(PhotoURL_filename):
     with open(PhotoURL_filename, 'r', encoding='utf-8') as fp:
         PhotoURL_dict = json.load(fp)
     
-    Face_Path = 'up头像/'
+    Face_Path = os.path.join('html_report', 'up头像')
     if not os.path.exists(Face_Path):
         os.makedirs(Face_Path)
 
@@ -249,8 +254,18 @@ def GetFace(PhotoURL_filename):
         
         for mid, url in PhotoURL_dict.items():
             count += 1
-            message = f"[{count}/{MaxCount}]:up头像{mid}"
-            logging.info(message)
+            # 每 10% 或最后一次输出一次进度百分比（避免除以0）
+            if MaxCount == 0:
+                percent = 100
+                should_log = True
+            else:
+                percent = int(count / MaxCount * 100)
+                step = max(1, MaxCount // 10)
+                should_log = (count % step == 0) or (count == MaxCount)
+
+            if should_log:
+                message = f"[{percent}%] up头像 {mid} ({count}/{MaxCount})"
+                logging.info(message)
             
             if url and isinstance(url, str) and url.startswith(('http://', 'https://')):
                 future = executor.submit(requests.get, url, headers=headers)
@@ -281,15 +296,13 @@ if __name__ == "__main__":
     )
 
     path1 = '收藏夹信息/'  # 存放信息的文件夹
-    path2 = '视频封面/'  # 放视频封面的文件夹
-    path3 = 'up头像/'  # 放up主头像的文件夹
+    path2 = os.path.join('html_report', '视频封面')  # 放视频封面的文件夹
+    path3 = os.path.join('html_report', 'up头像')  # 放up主头像的文件夹
 
     if not os.path.exists(path1):
         os.makedirs(path1)
-    if not os.path.exists(path2):
-        os.makedirs(path2)
-    if not os.path.exists(path3):
-        os.makedirs(path3)
+    os.makedirs(path2, exist_ok=True)
+    os.makedirs(path3, exist_ok=True)
 
     time_list = []
     STime = time.perf_counter()
@@ -302,8 +315,8 @@ if __name__ == "__main__":
     time_list.append(time.strftime("%M:%S", time.gmtime(ETime - STime)))
 
     STime = time.perf_counter()
-    view(path1, './收藏夹信息.xlsx')
+    view(path1, 'html_report')
     ETime = time.perf_counter()
     time_list.append(time.strftime("%M:%S", time.gmtime(ETime - STime)))
     logging.info(f"执行爬取代码所用时间：{time_list[0]}")
-    logging.info(f"将数据写入excel文件所用时间: {time_list[1]}")
+    logging.info(f"生成HTML报告所用时间: {time_list[1]}")
