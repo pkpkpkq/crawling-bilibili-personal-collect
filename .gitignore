@@ -5,6 +5,6 @@ __pycache__/
 up头像/
 *.json
 *.log
-*.xlsx
 html_report/
 *.html
+IFLOW.md
