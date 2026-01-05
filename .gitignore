@@ -1,6 +1,7 @@
 .venv
 __pycache__/
 收藏夹信息/
+收藏夹信息_backup/
 视频封面/
 up头像/
 *.json

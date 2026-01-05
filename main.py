@@ -29,16 +29,21 @@ def CompareLastTime(ReadPath, NewData):
         return NewData
     with open(ReadPath, 'r', encoding='utf-8') as f:
         OldData = json.load(f)
+    # 视频被删除，则保留上次的数据，并且标记
     for i in list(NewData.values()):
         if i['视频信息']['标题'] == "已失效视频" and str(i['id']) in OldData.keys():
             logging.info(f"{OldData[str(i['id'])]['视频信息']['标题']} 已失效")
             OldData[str(i['id'])]['是否失效'] = True
             NewData[str(i['id'])] = OldData[str(i['id'])]
+
+    # 自己取消收藏，标记并记录取消时间
     for i in list(OldData.values()):
         if i['id'] not in NewData.keys():
             logging.info(f"{i['视频信息']['标题']} 已取消收藏")
-            OldData[str(i['id'])]['是否取消了收藏'] = True
-            NewData[str(i['id'])] = OldData[str(i['id'])]
+            i['是否取消了收藏'] = True
+            i['取消收藏时间'] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
+            NewData[str(i['id'])] = i
+
     return NewData
 
 # --- Bilibili API Functions ---
