@@ -2,6 +2,7 @@ import json
 import os
 import time
 import logging
+from logging.handlers import RotatingFileHandler
 from concurrent import futures
 from viewing import view
 import requests
@@ -208,7 +209,24 @@ def GetImages(cover_url_file, face_url_file):
 # --- Main Execution ---
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(module)s - %(message)s', filename='bilibili_crawler.log', filemode='w', encoding='utf-8')
+    # 配置日志同时输出到文件和控制台
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    
+    # 创建日志格式
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(module)s - %(message)s')
+    
+    # 文件处理器
+    file_handler = logging.FileHandler('bilibili_crawler.log', mode='w', encoding='utf-8')
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+    
+    # 控制台处理器
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
     
     # 1. 读取配置文件
     try:
@@ -216,8 +234,11 @@ if __name__ == "__main__":
             config = json.load(f)
         UID = config.get("uid")
         COOKIE = config.get("cookie")
-        if not (UID and COOKIE):
-            raise ValueError("配置文件中缺少 'uid' 或 'cookie'。")
+        if not COOKIE:
+            COOKIE = "_uuid=F500E27C-018D-CC3F-17E8-C64812E174DA08613infoc; buvid3=475B7DAC-0579-421B-85B7-07A4076090B734771infoc; buvid_fp=475B7DAC-0579-421B-85B7-07A4076090B734771infoc; CURRENT_FNVAL=80; blackside_state=1; rpdid=|(k|k)~~RkkJ0J'uYk|YumRkm; fingerprint3=c1d980f375c848a729ebdd130960a847; CURRENT_QUALITY=112; LIVE_BUVID=AUTO9716210898194009; fingerprint_s=be57440a1cba44ed342ad526646463d4; bp_t_offset_51541144=529073781132033226; bp_video_offset_51541144=529330083309673464; bp_t_offset_289920431=529693188424888145; fingerprint=a43248e91a776fba5e92af41d1a900e0; buvid_fp_plain=95AEE299-5E58-4AA1-92EF-CFE2BE6C6243184999infoc; SESSDATA=41ff3c64%2C1637735786%2Cff017%2A51; bili_jct=c0a63b68e972a8d1acc44a3718075b58; DedeUserID=289920431; DedeUserID__ckMd5=c43d13bc962635fe; sid=bvgle9dv; PVID=3; bp_video_offset_289920431=529757320878990660; bfe_id=5db70a86bd1cbe8a88817507134f7bb5"
+            logging.warning("配置文件中缺少 'cookie'，已使用默认Cookie，将无法爬取关注的up列表和未公开内容。")
+        if not UID:
+            raise ValueError("配置文件中缺少 'uid' ")
     except (FileNotFoundError, ValueError) as e:
         logging.error(f"配置文件错误: {e}")
         logging.error("请先正确运行 getcookie.py 来生成有效的 config.json 文件，或者手动创建它。")
