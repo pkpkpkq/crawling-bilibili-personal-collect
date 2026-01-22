@@ -1,11 +1,13 @@
 .venv
 __pycache__/
 收藏夹信息/
-收藏夹信息_backup/
+收藏夹信息_backup_*/
 视频封面/
 up头像/
+temp/
 *.json
 *.log
 html_report/
 *.html
-IFLOW.md
+.*/
+AGENTS.md

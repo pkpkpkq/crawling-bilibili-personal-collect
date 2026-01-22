@@ -731,8 +731,35 @@ def build_video_index(RPath, report_dir):
         except Exception as e:
             logging.error(f"Failed to process {file_name}: {e}")
 
-    # Determine latest status for each video
+    # Determine latest status for each video and clean up move-related remove events
     for bvid, data in video_index.items():
+        # Filter out 'remove' events that are part of move operations
+        # When a video is moved from collection A to B, it shows: remove from A, add to B
+        # We want to hide the remove-from-A, but keep true deletions
+        cleaned_history = []
+        data['history'].sort(key=lambda x: x['time'], reverse=True)  # Sort newest first
+        for i, event in enumerate(data['history']):
+            if event['type'] == 'remove':
+                # Check if this remove is immediately followed (in time) by an add to another collection
+                # In reverse-sorted list, this means looking at indices > i for the nearest add
+                is_move_related = False
+                for j in range(i + 1, len(data['history'])):
+                    next_event = data['history'][j]
+                    if next_event['type'] == 'remove':
+                        # Encountered another remove, stop searching
+                        # This means current remove is not part of a move operation
+                        break
+                    elif next_event['type'] == 'add' and next_event['collection'] != event['collection']:
+                        # Found an add to a different collection right after this remove
+                        # This is a move operation, filter out the remove
+                        is_move_related = True
+                        break
+                
+                if not is_move_related:
+                    cleaned_history.append(event)
+            else:
+                cleaned_history.append(event)
+        data['history'] = cleaned_history
         data['history'].sort(key=lambda x: x['time'], reverse=True)
         if data['history']:
             latest_event = data['history'][0]

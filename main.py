@@ -22,28 +22,36 @@ def ProcessRawData(RawData):
             "观众数据": {"播放量": i['cnt_info']['play'], "收藏量": i['cnt_info']['collect'], "弹幕数量": i['cnt_info']['danmaku']},
             "三个时间": {"上传时间": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(i['ctime'])), "发布时间": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(i['pubtime'])), "收藏时间": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(i['fav_time']))}
         }
-        NewData[media['id']] = media
+        NewData[str(media['id'])] = media
     return NewData
 
 def CompareLastTime(ReadPath, NewData):
     if not os.path.exists(ReadPath):
         return NewData
-    with open(ReadPath, 'r', encoding='utf-8') as f:
-        OldData = json.load(f)
+    try:
+        with open(ReadPath, 'r', encoding='utf-8') as f:
+            OldData = json.load(f)
+    except (json.JSONDecodeError, FileNotFoundError) as e:
+        logging.warning(f"读取旧数据文件失败 {ReadPath}: {e}，将使用新数据")
+        return NewData
+    
     # 视频被删除，则保留上次的数据，并且标记
-    for i in list(NewData.values()):
-        if i['视频信息']['标题'] == "已失效视频" and str(i['id']) in OldData.keys():
-            logging.info(f"{OldData[str(i['id'])]['视频信息']['标题']} 已失效")
-            OldData[str(i['id'])]['是否失效'] = True
-            NewData[str(i['id'])] = OldData[str(i['id'])]
+    for new_key, i in list(NewData.items()):
+        # 统一使用字符串键查询OldData
+        str_id = str(i['id'])
+        if i['视频信息']['标题'] == "已失效视频" and str_id in OldData.keys():
+            logging.info(f"{OldData[str_id]['视频信息']['标题']} 已失效")
+            OldData[str_id]['是否失效'] = True
+            NewData[str_id] = OldData[str_id]
 
     # 自己取消收藏，标记并记录取消时间
-    for i in list(OldData.values()):
-        if i['id'] not in NewData.keys():
+    for old_key, i in list(OldData.items()):
+        str_id = str(i['id'])
+        if str_id not in NewData.keys():
             logging.info(f"{i['视频信息']['标题']} 已取消收藏")
             i['是否取消了收藏'] = True
             i['取消收藏时间'] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
-            NewData[str(i['id'])] = i
+            NewData[str_id] = i
 
     return NewData
 
@@ -67,29 +75,51 @@ def GetFavoriteID(WritePath, uid, headers):
         logging.error(f"请求收藏夹ID API时发生网络错误: {e}")
         return False
 
+
+def verify_cookie(headers):
+    """验证Cookie是否有效"""
+    try:
+        response = requests.get('https://api.bilibili.com/x/web-interface/nav', 
+                               headers=headers, timeout=5)
+        data = response.json()
+        return data.get('code') == 0
+    except Exception as e:
+        logging.warning(f"Cookie验证失败: {e}")
+        return False
+
 def GetFollowingUPs(uid, WritePath, headers):
     logging.info("开始爬取关注的UP主列表...")
     url = 'https://api.bilibili.com/x/relation/followings'
     params = {'vmid': uid, 'ps': 50, 'pn': 1, 'order': 'desc', 'order_type': 'attention', 'jsonp': 'jsonp'}
     all_following_ups = []
+    consecutive_empty_pages = 0  # 连续空页计数
+    max_consecutive_empty = 2    # 连续2页为空则停止
     while True:
         try:
-            response = requests.get(url, params=params, headers=headers)
+            response = requests.get(url, params=params, headers=headers, timeout=10)
             response.raise_for_status()
             data = response.json()
             if data.get('code') == 0:
                 following_list = data.get('data', {}).get('list', [])
                 if not following_list:
-                    logging.info("已获取所有关注的UP主。")
-                    break
-                for up in following_list:
-                    all_following_ups.append({"ID": up['mid'], "昵称": up['uname'], "头像": up['face']})
+                    consecutive_empty_pages += 1
+                    logging.warning(f"关注列表第 {params['pn']} 页为空（连续空页: {consecutive_empty_pages}/{max_consecutive_empty}）")
+                    if consecutive_empty_pages >= max_consecutive_empty:
+                        logging.info("已获取所有关注的UP主。")
+                        break
+                else:
+                    consecutive_empty_pages = 0  # 重置计数器
+                    for up in following_list:
+                        all_following_ups.append({"ID": up['mid'], "昵称": up['uname'], "头像": up['face']})
                 logging.info(f"成功爬取第 {params['pn']} 页关注列表，已获取 {len(all_following_ups)} 位UP主。")
                 params['pn'] += 1
                 time.sleep(1)
             else:
                 logging.error(f"获取关注列表时出错: {data.get('message', '未知API错误')}")
                 break
+        except requests.Timeout:
+            logging.error(f"第 {params['pn']} 页关注列表请求超时")
+            break
         except requests.RequestException as e:
             logging.error(f"请求关注列表API时发生网络错误: {e}")
             break
@@ -107,15 +137,30 @@ def GetOneFavorite(Media_Id, MaxPage, headers):
     for pn in range(1, MaxPage):
         params['pn'] = pn
         logging.info(f"正在爬取第 {pn} 页")
-        response = requests.get(url=url, params=params, headers=headers).json()
-        medias_list = response.get('data', {}).get('medias', [])
-        if not medias_list:
+        try:
+            response = requests.get(url=url, params=params, headers=headers, timeout=10)
+            response.raise_for_status()
+            json_data = response.json()
+            if json_data.get('code') != 0:
+                logging.error(f"收藏夹 {Media_Id} 第 {pn} 页API返回错误: {json_data.get('message', '未知错误')}")
+                break
+            medias_list = json_data.get('data', {}).get('medias', [])
+            if not medias_list:
+                break
+            for i in medias_list:
+                data[str(i['id'])] = i
+        except requests.Timeout:
+            logging.error(f"收藏夹 {Media_Id} 第 {pn} 页请求超时")
             break
-        for i in medias_list:
-            data[i['id']] = i
+        except requests.RequestException as e:
+            logging.error(f"收藏夹 {Media_Id} 第 {pn} 页网络错误: {e}")
+            break
+        except json.JSONDecodeError as e:
+            logging.error(f"收藏夹 {Media_Id} 第 {pn} 页JSON解析错误: {e}")
+            break
     return data
 
-def GetALLFavorite(WritePath, headers):
+def GetALLFavorite(WritePath, headers, BackupPath='收藏夹信息/'):
     id_file = os.path.join(WritePath, '收藏夹id.json')
     with open(id_file, 'r', encoding='utf-8') as fp:
         file = json.load(fp)
@@ -123,8 +168,10 @@ def GetALLFavorite(WritePath, headers):
     for i in ID_list:
         logging.info(f"爬取中...当前正在爬取 {i['title']}")
         filename = os.path.join(WritePath, i['title'] + '.json')
+        # 从备份路径读取历史数据进行对比
+        history_file = os.path.join(BackupPath, i['title'] + '.json')
         data = GetOneFavorite(i['id'], math.ceil(i['media_count'] / 20) + 1, headers)
-        a_fav_data = CompareLastTime(filename.replace(WritePath, '收藏夹信息/'), ProcessRawData(data))
+        a_fav_data = CompareLastTime(history_file, ProcessRawData(data))
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(a_fav_data, f, ensure_ascii=False, indent=4)
     os.remove(id_file)
@@ -160,32 +207,36 @@ def SetPhotoURL(ReadPath):
                     Face_dict[up['ID']] = up['头像']
         except (json.JSONDecodeError, FileNotFoundError):
             logging.warning("读取或解析关注UP列表JSON文件失败，已跳过。")
-    with open('视频封面url.json', 'w', encoding='utf-8') as fp:
+    temp_dir = os.path.join('.', 'temp')
+    os.makedirs(temp_dir, exist_ok=True)
+    cover_url_path = os.path.join(temp_dir, '视频封面url.json')
+    face_url_path = os.path.join(temp_dir, 'up头像url.json')
+    with open(cover_url_path, 'w', encoding='utf-8') as fp:
         json.dump(Cover_dict, fp, ensure_ascii=False, indent=4)
-    with open('up头像url.json', 'w', encoding='utf-8') as fp:
+    with open(face_url_path, 'w', encoding='utf-8') as fp:
         json.dump(Face_dict, fp, ensure_ascii=False, indent=4)
 
 def fetch_image(url, path, identifier, log_prefix):
     if not (url and isinstance(url, str) and url.startswith(('http://', 'https://'))):
-        logging.warning(f'已跳过无效的URL ({log_prefix}: {identifier}): "{url}"')
         return
-    try:
-        headers = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36', 'Referer': 'https://www.bilibili.com/'}
-        response = requests.get(url, headers=headers)
-        if response.status_code == 200:
-            if 'image' in response.headers.get('Content-Type', ''):
-                # Ensure the directory exists before writing the file
+    if os.path.exists(path):
+        return
+    for attempt in range(3):
+        try:
+            response = requests.get(url, headers={'Referer': 'https://www.bilibili.com/'}, timeout=10)
+            if response.status_code == 200 and 'image' in response.headers.get('Content-Type', ''):
                 os.makedirs(os.path.dirname(path), exist_ok=True)
-                with open(path, 'wb') as f1:
-                    f1.write(response.content)
-            else:
-                logging.warning(f'{log_prefix} {identifier} 的URL内容似乎不是图片, Content-Type: {response.headers.get("Content-Type")}')
-        else:
-            logging.warning(f'{log_prefix} {identifier} 的图片爬取失败，状态码: {response.status_code}')
-    except Exception as exc:
-        logging.error(f'{log_prefix} {identifier} 的图片爬取失败，出现异常: {exc}')
+                with open(path, 'wb') as f:
+                    f.write(response.content)
+                return
+        except Exception:
+            pass
+        if attempt < 2:
+            time.sleep(2 ** attempt)
 
-def GetImages(cover_url_file, face_url_file):
+def GetImages(temp_dir):
+    cover_url_file = os.path.join(temp_dir, '视频封面url.json')
+    face_url_file = os.path.join(temp_dir, 'up头像url.json')
     with open(cover_url_file, 'r', encoding='utf-8') as fp:
         cover_urls = json.load(fp)
     with open(face_url_file, 'r', encoding='utf-8') as fp:
@@ -203,7 +254,7 @@ def GetImages(cover_url_file, face_url_file):
         for mid, url in face_urls.items():
             face_path = os.path.join('html_report', 'up头像', f'{mid}.jpg')
             executor.submit(fetch_image, url, face_path, mid, "mid")
-    logging.info("图片爬取任务已全部分配。")
+    logging.info("所有图片爬取完成。")
 
 
 # --- Main Execution ---
@@ -250,6 +301,10 @@ if __name__ == "__main__":
         'Referer': 'https://www.bilibili.com/',
         'cookie': COOKIE
     }
+    
+    # 验证Cookie有效性
+    if not verify_cookie(base_headers):
+        logging.warning("Cookie可能已过期，某些功能（如爬取关注列表）可能无法正常工作")
 
     # 3. 设置文件夹路径并执行带有安全措施的爬取流程
     main_info_path = '收藏夹信息/'
@@ -272,8 +327,9 @@ if __name__ == "__main__":
         GetFollowingUPs(UID, temp_info_path, base_headers)
         GetALLFavorite(temp_info_path, base_headers)
         
+        temp_dir = os.path.join('.', 'temp')
         SetPhotoURL(temp_info_path)
-        GetImages('视频封面url.json', 'up头像url.json')
+        GetImages(temp_dir)
         
         ETime = time.perf_counter()
         time_list.append(time.strftime("%M:%S", time.gmtime(ETime - STime)))
@@ -285,10 +341,18 @@ if __name__ == "__main__":
     finally:
         if crawling_successful:
             logging.info("爬取成功，正在更新数据...")
-            if os.path.exists(main_info_path):
-                os.rename(main_info_path, backup_info_path)
-            os.rename(temp_info_path, main_info_path)
-            logging.info("数据更新完毕。")
+            try:
+                if os.path.exists(main_info_path):
+                    timestamp = time.strftime('%Y%m%d_%H%M%S')
+                    backup_with_time = f'{backup_info_path[:-1]}_{timestamp}/'
+                    os.rename(main_info_path, backup_with_time)
+                    logging.info(f"旧数据备份至: {backup_with_time}")
+                os.rename(temp_info_path, main_info_path)
+                logging.info("数据更新完毕。")
+            except OSError as e:
+                logging.error(f"更新数据失败: {e}")
+                if os.path.exists(temp_info_path):
+                    shutil.rmtree(temp_info_path)
         else:
             logging.error("爬取失败或被中断，保留原始数据，临时文件已删除。")
             if os.path.exists(temp_info_path):
