@@ -180,6 +180,7 @@ def manual_input() -> dict | None:
 4. 刷新页面，点击任意请求
 5. 在「Headers」中找到「Cookie」字段
 6. 复制整个Cookie字符串
+7. 确保字符串为单行，没有换行符，一个简单的处理方法是将其粘贴到浏览器顶部的搜索栏中（不用搜索），再复制
 """)
 
     print("请粘贴Cookie字符串 (输入 'q' 返回)：")
@@ -247,7 +248,19 @@ def save_config(cookie_dict: dict) -> bool:
 
     cookie_str = "; ".join([f"{k}={v}" for k, v in cookie_dict.items()])
 
-    config = {"uid": uid, "cookie": cookie_str}
+    config = {
+        "uid": uid,
+        "cookie": cookie_str,
+        "settings": {
+            "max_workers_crawl": 3,
+            "max_workers_image": 10,
+            "page_delay": 0.3,
+            "image_retry": 3,
+            "backup_keep_count": 5,
+            "enable_incremental": True,
+            "csv_export": True
+        }
+    }
 
     try:
         with open("config.json", "w", encoding="utf-8") as f:
