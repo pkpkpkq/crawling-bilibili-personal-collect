@@ -9,6 +9,7 @@ import json
 import os
 import sys
 import time
+from typing import Optional
 import requests
 
 # Bilibili 扫码登录 API
@@ -52,7 +53,7 @@ def print_qrcode_ascii(url: str) -> None:
         return False
 
 
-def qrcode_login() -> dict | None:
+def qrcode_login() -> Optional[dict]:
     """
     扫码登录获取Cookie
     返回: cookie字典 或 None（失败时）
@@ -164,7 +165,7 @@ def qrcode_login() -> dict | None:
     return None
 
 
-def manual_input() -> dict | None:
+def manual_input() -> Optional[dict]:
     """
     手动输入Cookie
     返回: cookie字典 或 None（失败时）
@@ -258,8 +259,8 @@ def save_config(cookie_dict: dict) -> bool:
             "image_retry": 3,
             "backup_keep_count": 5,
             "enable_incremental": True,
-            "csv_export": True
-        }
+            "csv_export": True,
+        },
     }
 
     try:

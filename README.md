@@ -3,7 +3,7 @@
 爬取你的 Bilibili 收藏夹数据，生成可离线浏览的 HTML 报告，支持全局搜索、数据统计仪表盘、视频下载等功能。
 原项目：[crawling-bilibili-personal-collect](https://github.com/cangkongman/crawling-bilibili-personal-collect)
 
-> **AI 声明**：本项目由 AI 辅助生成并经人工审核。
+> **AI 声明**：本仓库由 AI 辅助生成并经人工审核。
 
 ## 功能特性
 

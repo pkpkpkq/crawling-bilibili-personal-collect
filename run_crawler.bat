@@ -45,7 +45,7 @@ if errorlevel 1 (
     if /i "%choice%"=="Y" (
         echo.
         echo 正在启动服务器...
-        echo 请在浏览器中打开 http://localhost:8000
+        echo 请在浏览器中打开 http://localhost:8001
         echo 按 Ctrl+C 可停止服务器
         python server.py
     )
