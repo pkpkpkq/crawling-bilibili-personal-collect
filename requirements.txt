@@ -1,3 +1,4 @@
 requests>=2.25.0
 qrcode>=7.3.1
 yt-dlp>=2023.1.0
+PySide6

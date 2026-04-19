@@ -165,3 +165,13 @@ def seeded_fixture_summary(seeded_fixture_db):
                 f"SELECT COUNT(*) AS c FROM {table}"
             ).fetchone()["c"]
     return summary
+
+import sys
+from PySide6.QtWidgets import QApplication
+
+@pytest.fixture(scope="session")
+def qapp():
+    app = QApplication.instance()
+    if app is None:
+        app = QApplication(sys.argv)
+    yield app
