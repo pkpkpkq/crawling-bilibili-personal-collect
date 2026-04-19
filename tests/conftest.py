@@ -1,19 +1,24 @@
+import importlib
 import os
+import sys
 from pathlib import Path
 
 import pytest
 
-from database import (
-    add_video_to_collection,
-    get_connection,
-    get_db_path,
-    init_db,
-    mark_unfavorited,
-    record_crawl,
-    save_following_ups,
-    upsert_collection,
-    upsert_video,
-)
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+database = importlib.import_module("database")
+add_video_to_collection = database.add_video_to_collection
+get_connection = database.get_connection
+get_db_path = database.get_db_path
+init_db = database.init_db
+mark_unfavorited = database.mark_unfavorited
+record_crawl = database.record_crawl
+save_following_ups = database.save_following_ups
+upsert_collection = database.upsert_collection
+upsert_video = database.upsert_video
 
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -166,11 +171,10 @@ def seeded_fixture_summary(seeded_fixture_db):
             ).fetchone()["c"]
     return summary
 
-import sys
-from PySide6.QtWidgets import QApplication
-
 @pytest.fixture(scope="session")
 def qapp():
+    from PySide6.QtWidgets import QApplication
+
     app = QApplication.instance()
     if app is None:
         app = QApplication(sys.argv)

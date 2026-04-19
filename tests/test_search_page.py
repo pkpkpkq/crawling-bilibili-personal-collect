@@ -1,5 +1,3 @@
-import pytest
-from PySide6.QtCore import Qt
 from app.ui.pages.search_page import SearchPage
 from app.services.cache_service import CacheService
 

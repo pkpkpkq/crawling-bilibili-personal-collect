@@ -3,12 +3,10 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QLabel,
-    QGridLayout,
     QScrollArea,
     QFrame,
-    QSizePolicy,
 )
-from PySide6.QtCore import Qt, QMargins
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QPainter
 from PySide6.QtCharts import (
     QChart,

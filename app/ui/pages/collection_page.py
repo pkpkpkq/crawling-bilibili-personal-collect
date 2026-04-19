@@ -1,10 +1,8 @@
 import logging
-import os
 import webbrowser
 from typing import Any
 
-from PySide6.QtCore import QDate, Qt, Signal, Slot
-from PySide6.QtGui import QPixmap, QIcon
+from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
@@ -18,7 +16,6 @@ from PySide6.QtWidgets import (
     QTableView,
     QVBoxLayout,
     QWidget,
-    QFormLayout,
     QGroupBox,
 )
 

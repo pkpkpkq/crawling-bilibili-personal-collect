@@ -43,7 +43,7 @@ def test_dashboard_page_renders_sections(qapp, mock_stats):
 
     # Check for title
     labels = page.findChildren(QLabel)
-    titles = [l.text() for l in labels]
+    titles = [label.text() for label in labels]
     assert "Dashboard" in titles
 
     # Check for summary values

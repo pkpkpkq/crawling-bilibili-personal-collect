@@ -49,7 +49,7 @@ def test_click_webbrowser_open(qtbot, mocker, mock_db_connection, mock_following
 
     mock_webbrowser = mocker.patch("app.ui.pages.up_list_page.webbrowser.open")
 
-    from PySide6.QtCore import QEvent, QPoint, QRect, Qt
+    from PySide6.QtCore import QEvent, QPointF, QRect, Qt
     from PySide6.QtGui import QMouseEvent
 
     index = page.filter_proxy.index(0, 0)
@@ -57,7 +57,8 @@ def test_click_webbrowser_open(qtbot, mocker, mock_db_connection, mock_following
 
     event = QMouseEvent(
         QEvent.Type.MouseButtonRelease,
-        QPoint(50, 15),
+        QPointF(50, 15),
+        QPointF(50, 15),
         Qt.MouseButton.LeftButton,
         Qt.MouseButton.LeftButton,
         Qt.KeyboardModifier.NoModifier,

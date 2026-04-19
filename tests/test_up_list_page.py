@@ -1,5 +1,4 @@
 import pytest
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QListView
 
 from app.models import UpListRowRole

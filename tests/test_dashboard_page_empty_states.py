@@ -19,7 +19,7 @@ def test_dashboard_empty_states(qapp, mock_empty_stats):
 
     # Empty layout shouldn't throw error and should display empty states
     # e.g., 'No data available' text.
-    labels = [l.text() for l in page.findChildren(QLabel)]
+    labels = [label.text() for label in page.findChildren(QLabel)]
 
     assert "Total Videos" in labels
     assert "0" in labels

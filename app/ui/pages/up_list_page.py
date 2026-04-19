@@ -1,11 +1,9 @@
 import webbrowser
-from typing import Any
 
-from PySide6.QtCore import QEvent, QModelIndex, QPoint, QRect, Qt, Signal, Slot
-from PySide6.QtGui import QMouseEvent, QPainter, QPalette, QCursor
+from PySide6.QtCore import QEvent, QModelIndex, QRect, Qt, Signal, Slot
+from PySide6.QtGui import QMouseEvent, QPainter
 from PySide6.QtWidgets import (
     QAbstractItemView,
-    QHBoxLayout,
     QLabel,
     QLineEdit,
     QListView,
@@ -84,7 +82,7 @@ class UpListRowDelegate(QStyledItemDelegate):
             mouse_event: QMouseEvent = event
             if mouse_event.button() == Qt.MouseButton.LeftButton:
                 link_rect = self.link_rects.get(index)
-                if link_rect and link_rect.contains(mouse_event.pos()):
+                if link_rect and link_rect.contains(mouse_event.position().toPoint()):
                     mid = index.data(int(UpListRowRole.MID))
                     if mid:
                         webbrowser.open(f"https://space.bilibili.com/{mid}")

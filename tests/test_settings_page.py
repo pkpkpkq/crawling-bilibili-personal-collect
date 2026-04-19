@@ -1,4 +1,3 @@
-import pytest
 from PySide6.QtWidgets import QMessageBox
 from PySide6.QtCore import Qt
 from app.ui.pages.settings_page import SettingsPage

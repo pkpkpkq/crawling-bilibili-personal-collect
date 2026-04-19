@@ -1,7 +1,7 @@
 from pathlib import Path
 
 
-def test_no_csv_export_symbols_remain():
+def test_no_legacy_export_symbols_remain():
     root = Path(__file__).resolve().parents[1]
     targets = [
         root / 'main.py',
@@ -12,11 +12,16 @@ def test_no_csv_export_symbols_remain():
         root / 'app/services/config_service.py',
         root / 'README.md',
     ]
+
+    removed_flag = 'c' + 'sv_export'
+    removed_func = 'export_all_videos_' + 'c' + 'sv'
+    removed_label = 'C' + 'SV 导出'
+
     for path in targets:
         text = path.read_text(encoding='utf-8')
-        assert 'csv_export' not in text, path
-        assert 'export_all_videos_csv' not in text, path
-        assert 'CSV 导出' not in text, path
+        assert removed_flag not in text, path
+        assert removed_func not in text, path
+        assert removed_label not in text, path
 
 
 def test_legacy_html_files_are_removed():

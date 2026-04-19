@@ -11,4 +11,4 @@ html_report/
 AGENTS.md
 downloads/
 *.db
-*.csv
+*.[cC][sS][vV]

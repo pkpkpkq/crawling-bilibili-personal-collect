@@ -1,5 +1,5 @@
 import pytest
-from PySide6.QtCore import Qt, QDate
+from PySide6.QtCore import Qt
 from app.ui.pages.collection_page import CollectionPage
 from app.services.cache_service import CacheService
 
