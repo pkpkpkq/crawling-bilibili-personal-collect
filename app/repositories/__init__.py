@@ -14,7 +14,6 @@ from .migrations import migrate_from_json
 from .stats import get_stats
 from .videos import (
     add_video_to_collection,
-    export_all_videos_csv,
     get_all_cover_urls,
     get_all_up_face_urls,
     get_all_videos_index,
@@ -28,7 +27,6 @@ from .videos import (
 __all__ = [
     "DB_NAME",
     "add_video_to_collection",
-    "export_all_videos_csv",
     "get_all_collections",
     "get_all_cover_urls",
     "get_all_following_ups",

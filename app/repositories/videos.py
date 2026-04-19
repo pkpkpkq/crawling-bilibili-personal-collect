@@ -43,7 +43,3 @@ def get_all_up_face_urls(conn):
 
 def get_all_cover_urls(conn):
     return core.get_all_cover_urls(conn)
-
-
-def export_all_videos_csv(conn, output_path):
-    return core.export_all_videos_csv(conn, output_path)

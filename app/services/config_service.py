@@ -10,7 +10,6 @@ DEFAULT_SETTINGS = {
     "image_retry": 3,
     "backup_keep_count": 5,
     "enable_incremental": True,
-    "csv_export": True,
 }
 
 

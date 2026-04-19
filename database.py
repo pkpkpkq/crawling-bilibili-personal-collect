@@ -7,7 +7,6 @@ re-exports the legacy function surface.
 from app.repositories.core import (
     DB_NAME,
     add_video_to_collection,
-    export_all_videos_csv,
     get_all_collections,
     get_all_cover_urls,
     get_all_following_ups,
@@ -35,7 +34,6 @@ from app.repositories.core import (
 __all__ = [
     "DB_NAME",
     "add_video_to_collection",
-    "export_all_videos_csv",
     "get_all_collections",
     "get_all_cover_urls",
     "get_all_following_ups",

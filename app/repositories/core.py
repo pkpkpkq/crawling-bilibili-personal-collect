@@ -668,67 +668,6 @@ def get_stats(conn):
     return stats
 
 
-# --- CSV 导出 ---
-
-
-def export_all_videos_csv(conn, output_path):
-    """导出所有视频数据为 CSV"""
-    import csv
-
-    rows = conn.execute("""
-        SELECT v.bv_id, v.title, v.duration, u.name as up_name, u.mid as up_mid,
-               v.play_count, v.collect_count, v.danmaku_count,
-               v.upload_time, v.publish_time, v.is_invalid,
-               GROUP_CONCAT(c.name, '; ') as collections,
-               MAX(vc.fav_time) as latest_fav_time
-        FROM videos v
-        JOIN ups u ON v.up_mid = u.mid
-        LEFT JOIN video_collection vc ON v.bv_id = vc.bv_id AND vc.is_active = 1
-        LEFT JOIN collections c ON vc.collection_id = c.id
-        GROUP BY v.bv_id
-        ORDER BY latest_fav_time DESC
-    """).fetchall()
-
-    with open(output_path, "w", newline="", encoding="utf-8-sig") as f:
-        writer = csv.writer(f)
-        writer.writerow(
-            [
-                "BV号",
-                "标题",
-                "时长",
-                "UP主",
-                "UP主ID",
-                "播放量",
-                "收藏量",
-                "弹幕数",
-                "上传时间",
-                "发布时间",
-                "是否失效",
-                "所在收藏夹",
-                "最新收藏时间",
-            ]
-        )
-        for row in rows:
-            writer.writerow(
-                [
-                    row["bv_id"],
-                    row["title"],
-                    row["duration"],
-                    row["up_name"],
-                    row["up_mid"],
-                    row["play_count"],
-                    row["collect_count"],
-                    row["danmaku_count"],
-                    row["upload_time"],
-                    row["publish_time"],
-                    "是" if row["is_invalid"] else "否",
-                    row["collections"] or "(已取消收藏)",
-                    row["latest_fav_time"] or "",
-                ]
-            )
-    logging.info(f"已导出 {len(rows)} 条视频数据到 {output_path}")
-    return len(rows)
-
 
 # --- 从旧 JSON 数据迁移 ---
 

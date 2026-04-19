@@ -207,28 +207,7 @@ function handleFolderPage() {
         });
     }
 
-    // --- CSV Export Button ---
-    const exportBtn = document.getElementById('exportCsvBtn');
-    if (exportBtn) {
-        exportBtn.addEventListener('click', () => {
-            let csv = '\\uFEFF' + 'BV号,标题,UP主,播放量,收藏量,弹幕数,时长,收藏时间,发布时间\\n';
-            filteredCards.forEach(card => {
-                const row = [
-                    card.dataset.bv,
-                    '"' + card.dataset.title.replace(/"/g, '""') + '"',
-                    '"' + card.dataset.up.replace(/"/g, '""') + '"',
-                    card.dataset.play, card.dataset.collect, card.dataset.danmaku,
-                    card.dataset.duration, card.dataset.favtime, card.dataset.pubtime
-                ].join(',');
-                csv += row + '\\n';
-            });
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = document.title.replace(/[^a-zA-Z0-9\\u4e00-\\u9fff]/g, '_') + '.csv';
-            link.click();
-        });
-    }
+
 }
 
 // --- Global Search ---

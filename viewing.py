@@ -101,7 +101,6 @@ FOLDER_PAGE_BODY_TEMPLATE = """
             <option value="duration_desc">时长 ↓</option>
         </select>
     </div>
-    <button class="export-btn" id="exportCsvBtn">导出 CSV</button>
 </div>
 <div class="video-list">
     {video_cards}
