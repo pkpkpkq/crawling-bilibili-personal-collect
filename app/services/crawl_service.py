@@ -11,6 +11,7 @@ from typing import Any, Callable, Mapping
 import requests
 
 from app.services.auth_service import verify_cookie_headers
+from app.services.cache_service import CacheService
 from app.services.config_service import DEFAULT_SETTINGS as SERVICE_DEFAULT_SETTINGS
 from database import (
     get_all_cover_urls,
@@ -351,18 +352,22 @@ class CrawlService:
                 self.sleep_func(2**attempt)
         return False
 
-    def sync_images(self, db_path: str, settings: Mapping[str, Any], *, report_dir: str = "html_report"):
+    def sync_images(
+        self,
+        db_path: str,
+        settings: Mapping[str, Any],
+        *,
+        report_dir: str = "html_report",
+        cache_service: CacheService | None = None,
+    ):
+        cache_service = cache_service or CacheService()
+
         with get_connection(db_path) as conn:
             cover_urls = get_all_cover_urls(conn)
             face_urls = get_all_up_face_urls(conn)
 
         max_workers = self._resolve_worker_count(settings.get("max_workers_image", 10), 10)
         retry_count = self._resolve_worker_count(settings.get("image_retry", 3), 3)
-
-        cover_dir = os.path.join(report_dir, "视频封面")
-        face_dir = os.path.join(report_dir, "up头像")
-        os.makedirs(cover_dir, exist_ok=True)
-        os.makedirs(face_dir, exist_ok=True)
 
         logging.info(
             f"开始下载图片（封面 {len(cover_urls)} 张, 头像 {len(face_urls)} 张, {max_workers} 线程）..."
@@ -371,11 +376,11 @@ class CrawlService:
         futures = []
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             for bv, url in cover_urls.items():
-                cover_path = os.path.join(cover_dir, f"{bv}.jpg")
+                cover_path = cache_service.get_cover_file_path(bv)
                 futures.append(executor.submit(self.fetch_image, url, cover_path, retry_count))
 
             for mid, url in face_urls.items():
-                face_path = os.path.join(face_dir, f"{mid}.jpg")
+                face_path = cache_service.get_up_face_file_path(mid)
                 futures.append(executor.submit(self.fetch_image, url, face_path, retry_count))
 
             success = sum(1 for future in as_completed(futures) if future.result() is True)

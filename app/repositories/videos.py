@@ -32,9 +32,9 @@ def get_videos_in_collection(conn, collection_id, include_unfav=True):
     return _to_dicts(core.get_videos_in_collection(conn, collection_id, include_unfav))
 
 
-def get_all_videos_index(conn):
+def get_all_videos_index(conn, cache_service=None):
     """Stable global search index source structure."""
-    return core.get_all_videos_index(conn)
+    return core.get_all_videos_index(conn, cache_service=cache_service)
 
 
 def get_all_up_face_urls(conn):

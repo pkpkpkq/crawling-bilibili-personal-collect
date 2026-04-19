@@ -266,8 +266,8 @@ function handleGlobalSearch() {
             card.dataset.title = video.info.title;
             card.dataset.bv = video.bvid;
 
-            const coverPath = 'html_report/' + video.info.cover_path;
-            const upFacePath = 'html_report/' + video.info.up_face_path;
+            const coverPath = video.info.cover_path;
+            const upFacePath = video.info.up_face_path;
 
             card.innerHTML = `
                 <a class="cover-link" href="https://www.bilibili.com/video/${encodeURIComponent(video.bvid)}" target="_blank">

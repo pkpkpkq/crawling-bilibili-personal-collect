@@ -2,6 +2,8 @@ import os
 import json
 import logging
 import html
+
+from app.services.cache_service import CacheService
 from database import (
     get_connection,
     get_all_collections,
@@ -240,6 +242,8 @@ def html_escape(text):
 def view(db_path, report_dir_name):
     logging.info("---Starting HTML Report Generation---")
 
+    cache_service = CacheService()
+
     project_root = "."
     report_path = os.path.join(project_root, report_dir_name)
     assets_path = os.path.join(report_path, "assets")
@@ -257,7 +261,7 @@ def view(db_path, report_dir_name):
 
     with get_connection(db_path) as conn:
         # Build and save video index for global search
-        video_index = get_all_videos_index(conn)
+        video_index = get_all_videos_index(conn, cache_service=cache_service)
         index_path = os.path.join(report_path, "视频索引.json")
         with open(index_path, "w", encoding="utf-8") as f:
             json.dump(video_index, f, ensure_ascii=False)
@@ -271,7 +275,7 @@ def view(db_path, report_dir_name):
         # --- Generate UP List Page ---
         up_list_items = []
         for up in following_ups:
-            up_face_path = f"up头像/{up['mid']}.jpg"
+            up_face_path = cache_service.get_up_face_report_path(up["mid"])
             up_list_items.append(f'''<li class="up-list-item" data-up-name="{html_escape(up["name"])}">
                     <div class="up-link">
                         <img src="{up_face_path}" alt="{html_escape(up["name"])}">
@@ -370,8 +374,8 @@ def view(db_path, report_dir_name):
                     title_attr=html_escape(video["title"]),
                     title_html=html_escape(video["title"]),
                     bv=html_escape(bvid),
-                    cover_path=f"视频封面/{bvid}.jpg",
-                    up_face_path=f"up头像/{video['up_mid']}.jpg",
+                    cover_path=cache_service.get_cover_report_path(bvid),
+                    up_face_path=cache_service.get_up_face_report_path(video["up_mid"]),
                     up_name_attr=html_escape(video["up_name"]),
                     up_name_html=html_escape(video["up_name"]),
                     up_id=video["up_mid"],

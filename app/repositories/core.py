@@ -19,6 +19,8 @@ import hashlib
 from collections import OrderedDict
 from contextlib import contextmanager
 
+from app.services.cache_service import CacheService
+
 
 DB_NAME = "bilibili_data.db"
 
@@ -426,7 +428,9 @@ def get_video_history(conn, bv_id):
     return history
 
 
-def get_all_videos_index(conn):
+def get_all_videos_index(conn, cache_service=None):
+    cache_service = cache_service or CacheService()
+
     rows = conn.execute("""
         SELECT v.bv_id, v.title, v.cover_url, v.is_invalid,
                v.up_mid, u.name as up_name, u.face_url as up_face_url,
@@ -487,8 +491,8 @@ def get_all_videos_index(conn):
                 "up_id": row["up_mid"],
                 "is_invalid": bool(row["is_invalid"]),
                 "is_unfavorited": is_unfavorited,
-                "cover_path": f"视频封面/{bv}.jpg",
-                "up_face_path": f"up头像/{row['up_mid']}.jpg",
+                "cover_path": cache_service.get_cover_relative_path(bv),
+                "up_face_path": cache_service.get_up_face_relative_path(row["up_mid"]),
             },
             "history": history,
             "latest_collection": latest_collection,

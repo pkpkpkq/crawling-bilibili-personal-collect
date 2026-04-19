@@ -8,7 +8,7 @@ DIRECTORY = "."
 class SafeHandler(http.server.SimpleHTTPRequestHandler):
     """只允许访问报告相关文件，阻止敏感文件泄露"""
 
-    ALLOWED_PREFIXES = ("/html_report/", "/index.html")
+    ALLOWED_PREFIXES = ("/html_report/", "/cache/", "/index.html")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=DIRECTORY, **kwargs)
