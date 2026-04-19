@@ -1,9 +1,22 @@
-import json
 import os
+import json
 import time
 import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import math
+import sys
+
+import requests
+
+from app.services.auth_service import verify_cookie_headers
+from app.services.config_service import (
+    DEFAULT_SETTINGS as SERVICE_DEFAULT_SETTINGS,
+    ConfigDecodeError,
+    ConfigFileMissingError,
+    ConfigValidationError,
+    load_config as load_config_service,
+)
 from viewing import view
 from database import (
     get_db_path,
@@ -19,22 +32,11 @@ from database import (
     get_all_up_face_urls,
     migrate_from_json,
 )
-import requests
-import math
-import sys
 
 
 # --- Default Settings ---
 
-DEFAULT_SETTINGS = {
-    "max_workers_crawl": 3,
-    "max_workers_image": 10,
-    "page_delay": 0.3,
-    "image_retry": 3,
-    "backup_keep_count": 5,
-    "enable_incremental": True,
-    "csv_export": True,
-}
+DEFAULT_SETTINGS = dict(SERVICE_DEFAULT_SETTINGS)
 
 _api_semaphore = threading.Semaphore(2)
 
@@ -49,28 +51,22 @@ def _rate_limited_get(url, **kwargs):
 def load_config():
     """加载配置文件，合并默认设置"""
     try:
-        with open("config.json", "r", encoding="utf-8") as f:
-            config = json.load(f)
-    except FileNotFoundError:
+        uid, cookie, settings = load_config_service()
+    except ConfigFileMissingError:
         logging.error("配置文件 config.json 不存在")
         logging.error("请先运行 getcookie.py 来生成有效的 config.json 文件。")
         sys.exit(1)
-    except json.JSONDecodeError as e:
+    except ConfigDecodeError as e:
         logging.error(f"配置文件 JSON 解析错误: {e}")
         sys.exit(1)
-
-    uid = config.get("uid")
-    cookie = config.get("cookie")
-    if not uid:
+    except ConfigValidationError:
         logging.error("配置文件中缺少 'uid'")
         sys.exit(1)
+
     if not cookie:
         cookie = ""
         logging.warning("配置文件中缺少 'cookie'，将无法爬取关注列表和未公开内容。")
         logging.warning("请运行 getcookie.py 获取有效 Cookie。")
-
-    # 合并 settings
-    settings = {**DEFAULT_SETTINGS, **config.get("settings", {})}
 
     return uid, cookie, settings
 
@@ -129,15 +125,10 @@ def process_raw_data(RawData):
 
 def verify_cookie(headers):
     """验证Cookie是否有效"""
-    try:
-        response = requests.get(
-            "https://api.bilibili.com/x/web-interface/nav", headers=headers, timeout=5
-        )
-        data = response.json()
-        return data.get("code") == 0
-    except Exception as e:
-        logging.warning(f"Cookie验证失败: {e}")
-        return False
+    result = verify_cookie_headers(headers, timeout=5, require_login=False)
+    if not result.valid and result.error:
+        logging.warning(f"Cookie验证失败: {result.error}")
+    return result.valid
 
 
 def get_favorite_id_list(uid, headers):
