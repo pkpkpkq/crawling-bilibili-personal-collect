@@ -1,5 +1,3 @@
-import getcookie
-
 from app.services import auth_service
 
 
@@ -52,19 +50,3 @@ def test_poll_qrcode_login_session_rejects_incomplete_cookie_payload():
 
     assert result["success"] is False
     assert result["status"] == "incomplete_cookie"
-
-
-
-def test_invalid_cookie_save_does_not_persist_config(monkeypatch):
-    called = {"save": False}
-
-    def fake_save(uid, cookie):
-        called["save"] = True
-        return {"uid": uid, "cookie": cookie}
-
-    monkeypatch.setattr(getcookie, "save_config_service", fake_save)
-
-    ok = getcookie.save_config({"SESSDATA": "aaa"})
-
-    assert ok is False
-    assert called["save"] is False

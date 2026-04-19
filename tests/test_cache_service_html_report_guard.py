@@ -1,34 +1,27 @@
 from pathlib import Path
 
 
-def test_no_html_report_asset_canonical_references_in_runtime_code():
-    root = Path(__file__).resolve().parents[1]
-    target_files = [
-        root / "app" / "services" / "crawl_service.py",
-        root / "app" / "repositories" / "core.py",
-        root / "viewing.py",
-        root / "templates" / "main.js",
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_legacy_html_report_artifacts_removed():
+    forbidden_paths = [
+        ROOT / 'server.py',
+        ROOT / 'viewing.py',
+        ROOT / 'getcookie.py',
+        ROOT / 'downloader.py',
+        ROOT / 'index.html',
+        ROOT / 'templates',
+        ROOT / 'html_report',
     ]
 
-    forbidden = [
-        "视频封面/",
-        "up头像/",
-        "'html_report/' + video.info.cover_path",
-        '"html_report/" + video.info.cover_path',
-        "'html_report/' + video.info.up_face_path",
-        '"html_report/" + video.info.up_face_path',
-    ]
-
-    for path in target_files:
-        text = path.read_text(encoding="utf-8")
-        for token in forbidden:
-            assert token not in text, f"{path} still contains forbidden asset token: {token}"
+    for path in forbidden_paths:
+        assert not path.exists(), f'legacy path still exists: {path}'
 
 
 def test_cache_service_defines_expected_cache_layout():
-    root = Path(__file__).resolve().parents[1]
-    cache_service_py = root / "app" / "services" / "cache_service.py"
-    text = cache_service_py.read_text(encoding="utf-8")
+    cache_service_py = ROOT / 'app' / 'services' / 'cache_service.py'
+    text = cache_service_py.read_text(encoding='utf-8')
 
     assert 'CACHE_ROOT = "cache"' in text
     assert 'COVERS_DIR = "covers"' in text

@@ -1,6 +1,6 @@
 # Bilibili 收藏夹爬取与展示工具
 
-爬取你的 Bilibili 收藏夹数据，生成可离线浏览的 HTML 报告，支持全局搜索、数据统计仪表盘、视频下载等功能。
+爬取你的 Bilibili 收藏夹数据，提供 PySide6 桌面应用进行浏览与管理，支持全局搜索、数据统计仪表盘、视频下载等功能。
 原项目：[crawling-bilibili-personal-collect](https://github.com/cangkongman/crawling-bilibili-personal-collect)
 
 > **AI 声明**：本仓库由 AI 辅助生成并经人工审核。
@@ -30,49 +30,32 @@ cd crawling-bilibili-personal-collect
 pip install -r requirements.txt
 ```
 
-### 3. 获取 Cookie
+### 3. 启动桌面应用
 
 ```bash
-python getcookie.py
+python desktop.py
 ```
 
-支持扫码登录（推荐）或手动输入 Cookie，会自动生成 `config.json`。
+桌面应用是当前官方交互入口，用于查看数据、管理收藏夹和下载任务。
 
-### 4. 运行爬取
+### 4. 运行爬取（可选，命令行/自动化）
 
 ```bash
 python main.py
 ```
 
-首次运行会自动初始化 SQLite 数据库。如果存在旧的 JSON 数据，会自动迁移。
-
-### 5. 查看报告
-
-```bash
-python server.py
-```
-
-浏览器打开 `http://localhost:8001` 即可查看报告。
+`main.py` 保持为无界面的 headless 自动化入口，首次运行会自动初始化 SQLite 数据库。如果存在旧的 JSON 数据，会自动迁移。
 
 ## 项目结构
 
-```
-├── main.py             # 爬取主程序
+```text
+├── desktop.py          # PySide6 桌面应用入口
+├── main.py             # 无界面 headless 自动化入口
 ├── database.py         # SQLite 数据库层
-├── viewing.py          # HTML 报告生成
-├── getcookie.py        # Cookie 获取工具
-├── server.py           # 本地 HTTP 服务器
-├── downloader.py       # 视频下载模块（需要 yt-dlp）
 ├── run_crawler.bat     # 一键运行脚本
 ├── config.json         # 配置文件（含 Cookie 和可调参数）
 ├── 定时任务教程.md      # Windows 计划任务设置指南
-├── bilibili_data.db    # SQLite 数据库（运行后生成）
-├── html_report/        # 生成的 HTML 报告
-│   ├── assets/         # CSS + JS
-│   ├── 视频封面/       # 视频封面图片
-│   ├── up头像/         # UP 主头像
-│   └── fav-*.html      # 各收藏夹页面
-└── index.html          # 报告入口页
+└── bilibili_data.db    # SQLite 数据库（运行后生成）
 ```
 
 ## 配置说明
@@ -88,17 +71,8 @@ python server.py
 | `backup_keep_count` | 5 | 保留的旧数据备份数量 |
 | `enable_incremental` | true | 启用增量爬取 |
 
-## 视频下载
-
-```bash
-pip install yt-dlp    # 首次需安装
-python downloader.py
-```
-
-支持选择收藏夹批量下载或输入 BV 号单独下载，可选画质（best/1080p/720p/480p）。
-
 ## 注意事项
 
-- Cookie 过期后请重新运行 `getcookie.py`
+- Cookie 过期后请在桌面应用中重新配置
 - 爬取日志保存在 `bilibili_crawler.log`
 - `config.json` 包含敏感 Cookie 信息，请勿公开分享
