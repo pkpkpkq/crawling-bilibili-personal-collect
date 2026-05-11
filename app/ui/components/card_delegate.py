@@ -119,7 +119,9 @@ class BaseCardDelegate(QStyledItemDelegate):
             # Terracotta underline — fully opaque on hover, semi-transparent otherwise
             underline_y = link_rect.bottom() + 2
             underline_alpha = 255 if is_hovered else 100
-            underline_pen = QPen(QColor(201, 100, 66, underline_alpha), 1)
+            terracotta = QColor(Color.TERRACOTTA_BRAND.value)
+            terracotta.setAlpha(underline_alpha)
+            underline_pen = QPen(terracotta, 1)
             painter.setPen(underline_pen)
             painter.drawLine(link_rect.left(), underline_y, link_rect.right(), underline_y)
             y += link_height + Spacing.SCALE_8

@@ -139,7 +139,9 @@ class SearchVideoCardDelegate(BaseCardDelegate):
             # Terracotta underline — fully opaque on hover, semi-transparent otherwise
             up_underline_y = up_rect.bottom() + 2
             up_underline_alpha = 255 if up_is_hovered else 100
-            up_underline_pen = QPen(QColor(201, 100, 66, up_underline_alpha), 1)
+            up_terracotta = QColor(Color.TERRACOTTA_BRAND.value)
+            up_terracotta.setAlpha(up_underline_alpha)
+            up_underline_pen = QPen(up_terracotta, 1)
             painter.setPen(up_underline_pen)
             painter.drawLine(up_rect.left(), up_underline_y, up_rect.right(), up_underline_y)
         else:
