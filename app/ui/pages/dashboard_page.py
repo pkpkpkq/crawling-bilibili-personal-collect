@@ -43,7 +43,7 @@ _DURATION_SHORT_MAP = {
 
 
 def _chart_title_font() -> QFont:
-    f = QFont(Typography.FONT_FAMILY_SANS)
+    f = QFont(Typography.FONT_FAMILY_SERIF)
     f.setPixelSize(Typography.SIZE_SUB_HEADING_SMALL)
     f.setWeight(QFont.Weight.Medium)
     return f

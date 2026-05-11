@@ -1,6 +1,6 @@
 import webbrowser
 
-from PySide6.QtCore import QModelIndex, Signal, Slot
+from PySide6.QtCore import QModelIndex, QSize, Signal, Slot
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
 from app.models import UpListFilterProxyModel, UpListRowRole, UpListRowsModel
@@ -27,6 +27,9 @@ class UpCardDelegate(BaseCardDelegate):
 
     def _link_text(self, index: QModelIndex) -> str:
         return UP_CARD_LINK_TEXT
+
+    def sizeHint(self, option, index):
+        return QSize(280, 100)
 
     def _title_color(self, option):
         from PySide6.QtWidgets import QStyle
@@ -72,6 +75,12 @@ class UpListPage(QWidget):
         self.list_view.setModel(self.filter_proxy)
         self.delegate = UpCardDelegate(self.list_view)
         self.list_view.setItemDelegate(self.delegate)
+        # Grid layout for UP cards
+        self.list_view.setViewMode(CardListView.ViewMode.IconMode)
+        self.list_view.setIconSize(QSize(280, 0))
+        self.list_view.setGridSize(QSize(300, 120))
+        self.list_view.setWrapping(True)
+        self.list_view.setResizeMode(CardListView.ResizeMode.Adjust)
         self.list_view.setEditTriggers(
             CardListView.EditTrigger.NoEditTriggers
         )

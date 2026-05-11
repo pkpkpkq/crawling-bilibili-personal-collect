@@ -2,7 +2,7 @@ import webbrowser
 from typing import Any
 
 from PySide6.QtCore import QModelIndex, QRect, QSize, Qt, QEvent, Signal, Slot
-from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPixmap, QPolygon
+from PySide6.QtGui import QColor, QFont, QPainter, QPainterPath, QPen, QPixmap, QPolygon
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QCalendarWidget,
@@ -158,7 +158,11 @@ class CollectionVideoCardDelegate(BaseCardDelegate):
                 rect.width(),
                 rect.height(),
             )
+            clip_path = QPainterPath()
+            clip_path.addRoundedRect(rect, BorderRadius.SUBTLE, BorderRadius.SUBTLE)
+            painter.setClipPath(clip_path)
             painter.drawPixmap(rect, scaled.copy(crop_rect))
+            painter.setClipping(False)
         else:
             painter.setBrush(QColor(Color.WARM_SAND.value))
             painter.setPen(Qt.PenStyle.NoPen)
@@ -302,6 +306,7 @@ class CollectionPage(QWidget):
 
         header_layout = QHBoxLayout()
         self.back_btn = QPushButton(strings.BTN_BACK)
+        self.back_btn.setObjectName("secondary-btn")
         self.header = PageHeader(strings.PAGE_TITLE_COLLECTION)
         self.title_label = self.header.title_label
         header_layout.addWidget(self.back_btn)
