@@ -25,6 +25,7 @@ class BaseCardDelegate(QStyledItemDelegate):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._link_rect: dict[object, QRect] = {}
+        self._hovered_link_key: object | None = None
         self._expanded_rows: set[object] = set()
         # Layout state set during paint() for use by _paint_extras()
         self._title_y: int = 0
@@ -103,7 +104,8 @@ class BaseCardDelegate(QStyledItemDelegate):
             link_font.setWeight(QFont.Weight.Medium)
             link_font.setUnderline(False)
             painter.setFont(link_font)
-            painter.setPen(QColor(Color.DARK_WARM.value))
+            is_hovered = self._hovered_link_key == key
+            painter.setPen(QColor(Color.TERRACOTTA_BRAND.value if is_hovered else Color.DARK_WARM.value))
             metrics = painter.fontMetrics()
             link_width = metrics.horizontalAdvance(link_text)
             link_height = metrics.height()
@@ -114,9 +116,10 @@ class BaseCardDelegate(QStyledItemDelegate):
                 Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
                 link_text,
             )
-            # Terracotta rgba(201,100,66,100) ≈40% opacity
+            # Terracotta underline — fully opaque on hover, semi-transparent otherwise
             underline_y = link_rect.bottom() + 2
-            underline_pen = QPen(QColor(201, 100, 66, 100), 1)
+            underline_alpha = 255 if is_hovered else 100
+            underline_pen = QPen(QColor(201, 100, 66, underline_alpha), 1)
             painter.setPen(underline_pen)
             painter.drawLine(link_rect.left(), underline_y, link_rect.right(), underline_y)
             y += link_height + Spacing.SCALE_8
@@ -176,6 +179,13 @@ class BaseCardDelegate(QStyledItemDelegate):
         """Return whether ``position`` falls inside the last painted link rect."""
         rect = self._link_rect.get(self._index_key(index))
         return bool(rect and rect.contains(position))
+
+    def set_hover_link(self, key: object | None) -> None:
+        """Set which link is currently hovered. Triggers repaint if changed."""
+        if self._hovered_link_key != key:
+            self._hovered_link_key = key
+            if self.parent():
+                self.parent().viewport().update()
 
     def toggleExpanded(self, index: QModelIndex) -> None:  # noqa: N802
         """Toggle expanded state and notify the view to recalculate row height."""

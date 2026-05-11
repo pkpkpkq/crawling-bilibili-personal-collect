@@ -82,7 +82,13 @@ class DashboardPage(QWidget):
         scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         scroll_area.verticalScrollBar().setSingleStep(20)
 
+        scroll_content = QWidget()
+        scroll_layout = QHBoxLayout(scroll_content)
+        scroll_layout.setContentsMargins(0, 0, 0, 0)
+        scroll_layout.setSpacing(0)
+
         content_widget = QWidget()
+        content_widget.setMaximumWidth(1200)
         self.content_layout = QVBoxLayout(content_widget)
         self.content_layout.setContentsMargins(
             Spacing.PAGE_MARGIN,
@@ -131,7 +137,11 @@ class DashboardPage(QWidget):
 
         self.content_layout.addStretch()
 
-        scroll_area.setWidget(content_widget)
+        scroll_layout.addStretch()
+        scroll_layout.addWidget(content_widget)
+        scroll_layout.addStretch()
+
+        scroll_area.setWidget(scroll_content)
         main_layout.addWidget(scroll_area)
 
     def _clear_layout(self, layout):

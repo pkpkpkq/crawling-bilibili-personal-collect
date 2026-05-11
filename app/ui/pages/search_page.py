@@ -3,7 +3,7 @@ from typing import Any, Literal
 
 from PySide6.QtCore import QModelIndex, QRect, Qt
 from PySide6.QtGui import QColor, QFont, QPen
-from PySide6.QtWidgets import QStyle, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QApplication, QMenu, QStyle, QVBoxLayout, QWidget
 
 from app.models import (
     GlobalSearchFilterProxyModel,
@@ -12,7 +12,7 @@ from app.models import (
     PagedProxyModel,
 )
 from app.services.cache_service import CacheService
-from app.theme import BorderRadius, Color, Spacing, Typography
+from app.theme import BorderRadius, Color, Spacing, Typography, get_base_stylesheet
 from app.ui import strings
 from app.ui.components.card_delegate import BaseCardDelegate
 from app.ui.strings import (
@@ -37,6 +37,7 @@ class SearchVideoCardDelegate(BaseCardDelegate):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._up_link_rect: dict[object, QRect] = {}
+        self._up_hovered_key: object | None = None
 
     def _title_text(self, index: QModelIndex) -> str:
         return str(index.data(int(GlobalSearchRowRole.TITLE)) or "")
@@ -58,6 +59,17 @@ class SearchVideoCardDelegate(BaseCardDelegate):
         if self._up_link_rect.get(key, QRect()).contains(position):
             return "up"
         return None
+
+    def hitTestUpLink(self, position, index: QModelIndex) -> bool:  # noqa: N802
+        key = self._index_key(index)
+        rect = self._up_link_rect.get(key)
+        return bool(rect and rect.contains(position))
+
+    def setUpHoverLink(self, key: object | None) -> None:  # noqa: N802
+        if self._up_hovered_key != key:
+            self._up_hovered_key = key
+            if self.parent():
+                self.parent().viewport().update()
 
     def _title_color(self, option):
         index = self._paint_index
@@ -114,7 +126,8 @@ class SearchVideoCardDelegate(BaseCardDelegate):
             link_font = QFont(self._body_font)
             link_font.setWeight(QFont.Weight.Medium)
             painter.setFont(link_font)
-            painter.setPen(QColor(Color.DARK_WARM.value))
+            up_is_hovered = self._up_hovered_key == key
+            painter.setPen(QColor(Color.TERRACOTTA_BRAND.value if up_is_hovered else Color.DARK_WARM.value))
             metrics = painter.fontMetrics()
             up_x = bv_rect.right() + Spacing.SCALE_20
             up_width = metrics.horizontalAdvance(up_text)
@@ -123,9 +136,10 @@ class SearchVideoCardDelegate(BaseCardDelegate):
             painter.drawText(
                 up_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, up_text
             )
-            # Terracotta rgba(201,100,66,100) ≈40% opacity
+            # Terracotta underline — fully opaque on hover, semi-transparent otherwise
             up_underline_y = up_rect.bottom() + 2
-            up_underline_pen = QPen(QColor(201, 100, 66, 100), 1)
+            up_underline_alpha = 255 if up_is_hovered else 100
+            up_underline_pen = QPen(QColor(201, 100, 66, up_underline_alpha), 1)
             painter.setPen(up_underline_pen)
             painter.drawLine(up_rect.left(), up_underline_y, up_rect.right(), up_underline_y)
         else:
@@ -256,3 +270,22 @@ class SearchPage(QWidget):
             if up_id:
                 webbrowser.open(f"https://space.bilibili.com/{up_id}")
             return
+
+    def contextMenuEvent(self, event):
+        pos = self.list_view.viewport().mapFromGlobal(event.globalPos())
+        index = self.list_view.indexAt(pos)
+        if not index.isValid():
+            return
+        bv_id = index.data(int(GlobalSearchRowRole.BV_ID))
+        if not bv_id:
+            return
+        menu = QMenu(self)
+        menu.setStyleSheet(get_base_stylesheet())
+        copy_action = menu.addAction("复制 BV号")
+        open_action = menu.addAction("在浏览器中打开")
+        action = menu.exec(event.globalPos())
+        if action == copy_action:
+            clipboard = QApplication.clipboard()
+            clipboard.setText(bv_id)
+        elif action == open_action:
+            webbrowser.open(f"https://www.bilibili.com/video/{bv_id}")

@@ -128,11 +128,17 @@ class SettingsPage(QWidget):
         )
         cookie_card.card_layout.addWidget(cookie_label)
 
+        self._cookie_toggle = QPushButton("展开 Cookie 编辑")
+        self._cookie_toggle.setObjectName("secondary-btn")
+        self._cookie_toggle.clicked.connect(self._toggle_cookie_editor)
+        cookie_card.card_layout.addWidget(self._cookie_toggle)
+
         self.text_cookie = QTextEdit()
         self.text_cookie.setAcceptRichText(False)
         self.text_cookie.setPlaceholderText(strings.DL_COOKIE_PLACEHOLDER)
         self.text_cookie.setMinimumHeight(80)
         self.text_cookie.setMaximumHeight(120)
+        self.text_cookie.setVisible(False)
         cookie_card.card_layout.addWidget(self.text_cookie)
 
         layout.addWidget(cookie_card)
@@ -207,6 +213,11 @@ class SettingsPage(QWidget):
 
     def _create_qr_worker(self) -> QRLoginWorker:
         return QRLoginWorker()
+
+    def _toggle_cookie_editor(self) -> None:
+        visible = not self.text_cookie.isVisible()
+        self.text_cookie.setVisible(visible)
+        self._cookie_toggle.setText("收起 Cookie 编辑" if visible else "展开 Cookie 编辑")
 
     def load_current_config(self) -> None:
         try:

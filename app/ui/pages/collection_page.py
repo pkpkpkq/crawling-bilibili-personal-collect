@@ -5,6 +5,7 @@ from PySide6.QtCore import QModelIndex, QRect, QSize, Qt, QEvent, Signal, Slot
 from PySide6.QtGui import QColor, QFont, QPainter, QPainterPath, QPen, QPixmap, QPolygon
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QApplication,
     QCalendarWidget,
     QCheckBox,
     QComboBox,
@@ -13,6 +14,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QListWidget,
     QListWidgetItem,
+    QMenu,
     QPushButton,
     QStackedWidget,
     QStyle,
@@ -627,6 +629,26 @@ class CollectionPage(QWidget):
                 webbrowser.open(f"https://www.bilibili.com/video/{bv_id}")
             return
         self.delegate.toggleExpanded(index)
+
+    def contextMenuEvent(self, event):
+        """Right-click context menu: Copy BV号 / Open in browser."""
+        pos = self.list_view.viewport().mapFromGlobal(event.globalPos())
+        index = self.list_view.indexAt(pos)
+        if not index.isValid():
+            return
+        bv_id = index.data(int(CollectionRowRole.BV_ID))
+        if not bv_id:
+            return
+        menu = QMenu(self)
+        menu.setStyleSheet(get_base_stylesheet())
+        copy_action = menu.addAction("复制 BV号")
+        open_action = menu.addAction("在浏览器中打开")
+        action = menu.exec(event.globalPos())
+        if action == copy_action:
+            clipboard = QApplication.clipboard()
+            clipboard.setText(bv_id)
+        elif action == open_action:
+            webbrowser.open(f"https://www.bilibili.com/video/{bv_id}")
 
     def _clear_expanded_cards(self) -> None:
         self.delegate._expanded_rows.clear()
