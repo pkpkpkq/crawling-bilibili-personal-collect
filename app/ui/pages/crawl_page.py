@@ -7,13 +7,14 @@ from PySide6.QtWidgets import (
     QLabel,
     QPushButton,
     QProgressBar,
-    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
 
 from app.services import config_service
 from app.theme import Spacing
+from app.ui import strings
+from app.ui.components import LogPanel, PageHeader, StatusBadge, SurfaceCard
 from app.workers.crawl_worker import CrawlWorker
 
 
@@ -28,67 +29,83 @@ class CrawlPage(QWidget):
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(
-            Spacing.CARD_PADDING,
-            Spacing.CARD_PADDING,
-            Spacing.CARD_PADDING,
-            Spacing.CARD_PADDING,
+            Spacing.PAGE_MARGIN,
+            Spacing.PAGE_MARGIN,
+            Spacing.PAGE_MARGIN,
+            Spacing.PAGE_MARGIN,
         )
         layout.setSpacing(Spacing.SCALE_16)
 
-        title = QLabel("Crawl Control")
-        title.setObjectName("h1")
-        layout.addWidget(title)
+        self._page_header = PageHeader(strings.PAGE_TITLE_CRAWL_CENTER)
+        layout.addWidget(self._page_header)
 
+        action_card = SurfaceCard()
         button_row = QHBoxLayout()
         button_row.setSpacing(Spacing.SCALE_12)
 
-        self.btn_start = QPushButton("开始爬取")
+        self.btn_start = QPushButton(strings.BTN_START_CRAWL)
         self.btn_start.clicked.connect(self.start_crawl)
         button_row.addWidget(self.btn_start)
 
-        self.btn_stop = QPushButton("停止")
+        self.btn_stop = QPushButton(strings.BTN_STOP)
         self.btn_stop.setEnabled(False)
         self.btn_stop.clicked.connect(self.stop_crawl)
         button_row.addWidget(self.btn_stop)
 
-        self.btn_clear_log = QPushButton("清空日志")
+        self.btn_clear_log = QPushButton(strings.BTN_CLEAR_LOG)
         self.btn_clear_log.clicked.connect(self.clear_logs)
         button_row.addWidget(self.btn_clear_log)
 
         button_row.addStretch()
-        layout.addLayout(button_row)
+        action_card.card_layout.addLayout(button_row)
 
-        self.status_label = QLabel("状态: 空闲")
-        self.progress_label = QLabel("进度: 0/0")
-        layout.addWidget(self.status_label)
-        layout.addWidget(self.progress_label)
+        status_row = QHBoxLayout()
+        status_row.setSpacing(Spacing.SCALE_12)
+
+        self.status_label = StatusBadge(strings.CRAWL_STATUS_IDLE, "info")
+        status_row.addWidget(self.status_label)
+
+        self.progress_label = QLabel("\u8fdb\u5ea6: 0/0")
+        status_row.addWidget(self.progress_label)
 
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 1)
         self.progress_bar.setValue(0)
-        layout.addWidget(self.progress_bar)
+        status_row.addWidget(self.progress_bar, stretch=1)
 
+        action_card.card_layout.addLayout(status_row)
+
+        layout.addWidget(action_card)
+
+        stats_card = SurfaceCard()
         stats_grid = QGridLayout()
         stats_grid.setHorizontalSpacing(Spacing.SCALE_16)
         stats_grid.setVerticalSpacing(Spacing.SCALE_8)
 
-        self.stat_total_label = QLabel("总视频: 0")
-        self.stat_new_label = QLabel("新增: 0")
-        self.stat_invalid_label = QLabel("失效: 0")
-        self.stat_unfav_label = QLabel("取消收藏: 0")
-        self.stat_duration_label = QLabel("耗时: 0.00s")
+        self.stat_total_label = QLabel(strings.CRAWL_STAT_TOTAL)
+        self.stat_new_label = QLabel(strings.CRAWL_STAT_NEW)
+        self.stat_invalid_label = QLabel(strings.CRAWL_STAT_INVALID)
+        self.stat_unfav_label = QLabel(strings.CRAWL_STAT_UNFAV)
+        self.stat_duration_label = QLabel(strings.CRAWL_STAT_DURATION)
 
         stats_grid.addWidget(self.stat_total_label, 0, 0)
         stats_grid.addWidget(self.stat_new_label, 0, 1)
         stats_grid.addWidget(self.stat_invalid_label, 1, 0)
         stats_grid.addWidget(self.stat_unfav_label, 1, 1)
         stats_grid.addWidget(self.stat_duration_label, 2, 0, 1, 2)
-        layout.addLayout(stats_grid)
+        stats_card.card_layout.addLayout(stats_grid)
 
-        self.log_output = QTextEdit()
-        self.log_output.setReadOnly(True)
-        self.log_output.setPlaceholderText("爬取日志会显示在这里...")
-        layout.addWidget(self.log_output, stretch=1)
+        layout.addWidget(stats_card)
+
+        self._log_panel = LogPanel()
+        self._log_panel.text_edit.setPlaceholderText(
+            strings.DL_CRAWL_LOG_PLACEHOLDER
+        )
+        layout.addWidget(self._log_panel, stretch=1)
+
+    @property
+    def log_output(self):
+        return self._log_panel.text_edit
 
     def _create_worker(self, uid: Any, cookie: str, settings: Mapping[str, Any]) -> CrawlWorker:
         return CrawlWorker(uid=uid, cookie=cookie, settings=settings)
@@ -98,14 +115,14 @@ class CrawlPage(QWidget):
         self.btn_stop.setEnabled(running)
 
     def _append_log(self, message: str) -> None:
-        self.log_output.append(message)
+        self._log_panel.append_log(message)
 
     def _update_summary_labels(self, stats: Mapping[str, Any], duration_seconds: float) -> None:
-        self.stat_total_label.setText(f"总视频: {int(stats.get('total', 0))}")
-        self.stat_new_label.setText(f"新增: {int(stats.get('new', 0))}")
-        self.stat_invalid_label.setText(f"失效: {int(stats.get('invalid', 0))}")
-        self.stat_unfav_label.setText(f"取消收藏: {int(stats.get('unfav', 0))}")
-        self.stat_duration_label.setText(f"耗时: {float(duration_seconds):.2f}s")
+        self.stat_total_label.setText(f"\u603b\u89c6\u9891: {int(stats.get('total', 0))}")
+        self.stat_new_label.setText(f"\u65b0\u589e: {int(stats.get('new', 0))}")
+        self.stat_invalid_label.setText(f"\u5931\u6548: {int(stats.get('invalid', 0))}")
+        self.stat_unfav_label.setText(f"\u53d6\u6d88\u6536\u85cf: {int(stats.get('unfav', 0))}")
+        self.stat_duration_label.setText(f"\u8017\u65f6: {float(duration_seconds):.2f}s")
 
     @Slot()
     def start_crawl(self) -> None:
@@ -115,16 +132,16 @@ class CrawlPage(QWidget):
         try:
             uid, cookie, settings = config_service.load_config()
         except Exception as exc:  # pylint: disable=broad-except
-            self.status_label.setText("状态: 配置加载失败")
-            self._append_log(f"配置加载失败: {exc}")
+            self.status_label.set_status(strings.CRAWL_STATUS_CONFIG_ERROR, "error")
+            self._append_log(f"\u914d\u7f6e\u52a0\u8f7d\u5931\u8d25: {exc}")
             return
 
-        self.status_label.setText("状态: 爬取中...")
-        self.progress_label.setText("进度: 0/0")
+        self.status_label.set_status(strings.CRAWL_STATUS_RUNNING, "info")
+        self.progress_label.setText("\u8fdb\u5ea6: 0/0")
         self.progress_bar.setRange(0, 1)
         self.progress_bar.setValue(0)
         self._update_summary_labels({}, 0.0)
-        self._append_log("开始执行爬取任务...")
+        self._append_log("\u5f00\u59cb\u6267\u884c\u722c\u53d6\u4efb\u52a1...")
 
         worker = self._create_worker(uid, cookie, settings)
         self._worker = worker
@@ -143,24 +160,24 @@ class CrawlPage(QWidget):
         if self._worker is None or not self._worker.isRunning():
             return
 
-        self.status_label.setText("状态: 停止请求中...")
+        self.status_label.set_status(strings.CRAWL_STATUS_STOPPING, "info")
         self.btn_stop.setEnabled(False)
         self._worker.request_stop()
 
     @Slot()
     def clear_logs(self) -> None:
-        self.log_output.clear()
+        self._log_panel.clear_logs()
 
     @Slot(int, int)
     def _on_progress_changed(self, current: int, total: int) -> None:
         if total <= 0:
             self.progress_bar.setRange(0, 0)
-            self.progress_label.setText("进度: 0/0")
+            self.progress_label.setText("\u8fdb\u5ea6: 0/0")
             return
 
         self.progress_bar.setRange(0, total)
         self.progress_bar.setValue(max(0, min(current, total)))
-        self.progress_label.setText(f"进度: {current}/{total}")
+        self.progress_label.setText(f"\u8fdb\u5ea6: {current}/{total}")
 
     @Slot(object)
     def _on_crawl_completed(self, result) -> None:
@@ -170,27 +187,27 @@ class CrawlPage(QWidget):
         error = getattr(result, "error", None)
 
         if success:
-            self.status_label.setText("状态: 爬取完成")
-            self._append_log("爬取任务完成。")
+            self.status_label.set_status(strings.CRAWL_STATUS_COMPLETE, "success")
+            self._append_log("\u722c\u53d6\u4efb\u52a1\u5b8c\u6210\u3002")
         else:
-            self.status_label.setText("状态: 爬取失败")
+            self.status_label.set_status(strings.CRAWL_STATUS_FAILED, "error")
             if error:
-                self._append_log(f"爬取失败: {error}")
+                self._append_log(f"\u722c\u53d6\u5931\u8d25: {error}")
 
         self._update_summary_labels(stats, duration_seconds)
         self.crawl_completed.emit(result)
 
     @Slot(str)
     def _on_crawl_error(self, message: str) -> None:
-        self.status_label.setText("状态: 爬取失败")
-        self._append_log(f"爬取线程异常: {message}")
+        self.status_label.set_status(strings.CRAWL_STATUS_FAILED, "error")
+        self._append_log(f"\u722c\u53d6\u7ebf\u7a0b\u5f02\u5e38: {message}")
 
     @Slot()
     def _on_worker_finished(self) -> None:
         self._set_controls_running(False)
         if self._worker is not None:
             self._worker.deleteLater()
-        self._worker = None
+            self._worker = None
 
     def closeEvent(self, event) -> None:
         if self._worker is not None and self._worker.isRunning():
