@@ -151,7 +151,7 @@ class DownloadsPage(QWidget):
         self.status_label = StatusBadge(strings.DOWNLOAD_STATUS_IDLE, "info")
         status_row.addWidget(self.status_label)
 
-        self.progress_label = QLabel("\u8fdb\u5ea6: 0/0")
+        self.progress_label = QLabel("进度: 0/0")
         status_row.addWidget(self.progress_label)
 
         self.progress_bar = QProgressBar()
@@ -187,9 +187,6 @@ class DownloadsPage(QWidget):
     def _append_log(self, message: str) -> None:
         self._log_panel.append_log(message)
 
-    def _set_status(self, text: str, *, kind: str = "info") -> None:
-        self.status_label.set_status(f"\u72b6\u6001: {text}", kind=kind)
-
     def _create_worker(self, **kwargs: Any) -> DownloadWorker:
         return DownloadWorker(
             download_service=self._download_service,
@@ -208,14 +205,14 @@ class DownloadsPage(QWidget):
             self.collections_hint_label.setText(
                 strings.DL_COLLECTIONS_AVAILABLE.format(count=0)
             )
-            self._set_status("\u6536\u85cf\u5939\u52a0\u8f7d\u5931\u8d25", kind="error")
-            self._append_log(f"\u6536\u85cf\u5939\u52a0\u8f7d\u5931\u8d25: {exc}")
+            self.status_label.set_status("状态: 收藏夹加载失败", kind="error")
+            self._append_log(f"收藏夹加载失败: {exc}")
             return
 
         self.collection_combo.blockSignals(True)
         self.collection_combo.clear()
         for row in rows:
-            name = str(row.get("name", "\u672a\u77e5\u6536\u85cf\u5939"))
+            name = str(row.get("name", "未知收藏夹"))
             active_count = int(row.get("active_count", 0))
             text = strings.COLLECTION_VIDEO_COUNT.format(name=name, count=active_count)
             self.collection_combo.addItem(text, int(row.get("id", 0)))
@@ -227,7 +224,7 @@ class DownloadsPage(QWidget):
         )
 
         if not rows:
-            self._append_log("\u672a\u627e\u5230\u53ef\u4e0b\u8f7d\u6536\u85cf\u5939\uff0c\u8bf7\u5148\u6267\u884c\u722c\u53d6\u3002")
+            self._append_log("未找到可下载收藏夹，请先执行爬取。")
 
     @Slot(int)
     def _on_mode_changed(self, _index: int) -> None:
@@ -249,7 +246,7 @@ class DownloadsPage(QWidget):
         if mode == "single":
             bv_id = self.single_bv_input.text().strip()
             if not bv_id:
-                self._set_status("\u8bf7\u8f93\u5165 BV \u53f7", kind="error")
+                self.status_label.set_status("状态: 请输入 BV 号", kind="error")
                 return
 
             worker = self._create_worker(
@@ -259,11 +256,11 @@ class DownloadsPage(QWidget):
                 output_base=output_base,
                 use_cookie=use_cookie,
             )
-            self._append_log(f"\u5f00\u59cb\u5355\u89c6\u9891\u4e0b\u8f7d: {bv_id} (\u753b\u8d28: {quality})")
+            self._append_log(f"开始单视频下载: {bv_id} (画质: {quality})")
         else:
             collection_id = self.collection_combo.currentData()
             if collection_id is None:
-                self._set_status("\u8bf7\u5148\u52a0\u8f7d\u5e76\u9009\u62e9\u6536\u85cf\u5939", kind="error")
+                self.status_label.set_status("状态: 请先加载并选择收藏夹", kind="error")
                 return
 
             worker = self._create_worker(
@@ -274,7 +271,7 @@ class DownloadsPage(QWidget):
                 use_cookie=use_cookie,
             )
             self._append_log(
-                f"\u5f00\u59cb\u6536\u85cf\u5939\u4e0b\u8f7d: {self.collection_combo.currentText()} (\u753b\u8d28: {quality})"
+                f"开始收藏夹下载: {self.collection_combo.currentText()} (画质: {quality})"
             )
 
         self._worker = worker
@@ -284,10 +281,10 @@ class DownloadsPage(QWidget):
         worker.download_failed.connect(self._on_download_failed)
         worker.finished.connect(self._on_worker_finished)
 
-        self.progress_label.setText("\u8fdb\u5ea6: 0/0")
+        self.progress_label.setText("进度: 0/0")
         self.progress_bar.setRange(0, 1)
         self.progress_bar.setValue(0)
-        self._set_status(strings.DOWNLOAD_STATUS_DOWNLOADING)
+        self.status_label.set_status(strings.DOWNLOAD_STATUS_DOWNLOADING, kind="info")
 
         self._set_controls_running(True)
         worker.start()
@@ -295,56 +292,57 @@ class DownloadsPage(QWidget):
     @Slot()
     def clear_logs(self) -> None:
         self._log_panel.clear_logs()
+        self.status_label.set_status(strings.DOWNLOAD_STATUS_IDLE, kind="info")
 
     @staticmethod
     def _format_summary(summary: dict[str, Any]) -> str:
         mode = str(summary.get("mode", "unknown"))
         if mode == "single":
-            bv_id = summary.get("bv_id") or "\u672a\u77e5 BV"
+            bv_id = summary.get("bv_id") or "未知 BV"
             return (
-                f"[\u5355\u89c6\u9891] {bv_id} | \u6210\u529f: {int(summary.get('success_count', 0))} "
-                f"\u5931\u8d25: {int(summary.get('fail_count', 0))}"
+                f"[单视频] {bv_id} | 成功: {int(summary.get('success_count', 0))} "
+                f"失败: {int(summary.get('fail_count', 0))}"
             )
 
         name = (
             summary.get("collection_name")
             or summary.get("collection_id")
-            or "\u672a\u77e5\u6536\u85cf\u5939"
+            or "未知收藏夹"
         )
         return (
-            f"[\u6536\u85cf\u5939] {name} | \u6210\u529f: {int(summary.get('success_count', 0))} "
-            f"\u5931\u8d25: {int(summary.get('fail_count', 0))} "
-            f"\u8df3\u8fc7\u5931\u6548: {int(summary.get('skipped_invalid_count', 0))} "
-            f"\u8df3\u8fc7\u5df2\u5b58\u5728: {int(summary.get('skipped_existing_count', 0))}"
+            f"[收藏夹] {name} | 成功: {int(summary.get('success_count', 0))} "
+            f"失败: {int(summary.get('fail_count', 0))} "
+            f"跳过失效: {int(summary.get('skipped_invalid_count', 0))} "
+            f"跳过已存在: {int(summary.get('skipped_existing_count', 0))}"
         )
 
     def _append_cookie_warning(self, summary: dict[str, Any]) -> None:
         warning = dict(summary.get("cookie_warning") or {})
         if not warning:
             return
-        message = str(warning.get("message") or "Cookie \u4e0d\u53ef\u7528")
-        self._append_log(f"Cookie \u63d0\u793a: {message}")
+        message = str(warning.get("message") or "Cookie 不可用")
+        self._append_log(f"Cookie 提示: {message}")
 
     @Slot(str)
     def _on_status_changed(self, message: str) -> None:
-        self._set_status(message, kind="info")
+        self.status_label.set_status(f"状态: {message}", kind="info")
 
     @Slot(int, int)
     def _on_progress_changed(self, current: int, total: int) -> None:
         if total <= 0:
             self.progress_bar.setRange(0, 0)
-            self.progress_label.setText("\u8fdb\u5ea6: \u51c6\u5907\u4e2d...")
+            self.progress_label.setText("进度: 准备中...")
             return
 
         safe_current = max(0, min(current, total))
         self.progress_bar.setRange(0, total)
         self.progress_bar.setValue(safe_current)
-        self.progress_label.setText(f"\u8fdb\u5ea6: {safe_current}/{total}")
+        self.progress_label.setText(f"进度: {safe_current}/{total}")
 
     @Slot(dict)
     def _on_download_succeeded(self, summary: dict[str, Any]) -> None:
         self._append_cookie_warning(summary)
-        self._set_status(strings.DOWNLOAD_STATUS_COMPLETE, kind="success")
+        self.status_label.set_status(strings.DOWNLOAD_STATUS_COMPLETE, kind="success")
         self._append_log(self._format_summary(summary))
         self.download_completed.emit(summary)
 
@@ -353,19 +351,19 @@ class DownloadsPage(QWidget):
         self._append_cookie_warning(summary)
         error = dict(summary.get("error") or {})
         code = str(error.get("code") or "")
-        message = str(error.get("message") or "\u4e0b\u8f7d\u5931\u8d25")
+        message = str(error.get("message") or "下载失败")
 
         if code == "missing_ytdlp":
-            self._set_status("\u7f3a\u5c11 yt-dlp\uff0c\u65e0\u6cd5\u4e0b\u8f7d", kind="error")
+            self.status_label.set_status("状态: 缺少 yt-dlp，无法下载", kind="error")
             self._append_log(message)
             install_url = (error.get("details") or {}).get("install_url")
             if install_url:
-                self._append_log(f"\u5b89\u88c5\u6307\u5f15: {install_url}")
+                self._append_log(f"安装指引: {install_url}")
         elif code in COOKIE_ERROR_CODES:
-            self._set_status("Cookie \u4e0d\u53ef\u7528\uff0c\u8bf7\u5148\u5728\u8bbe\u7f6e\u9875\u5b8c\u6210\u767b\u5f55", kind="error")
-            self._append_log(f"Cookie \u9519\u8bef: {message}")
+            self.status_label.set_status("状态: Cookie 不可用，请先在设置页完成登录", kind="error")
+            self._append_log(f"Cookie 错误: {message}")
         else:
-            self._set_status(strings.DOWNLOAD_STATUS_FAILED, kind="error")
+            self.status_label.set_status(strings.DOWNLOAD_STATUS_FAILED, kind="error")
             self._append_log(message)
 
         self._append_log(self._format_summary(summary))

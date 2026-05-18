@@ -2,7 +2,7 @@ import pytest
 from PySide6.QtWidgets import QListView
 
 from app.models import UpListRowRole
-from app.ui.pages.up_list_page import UpListPage
+from app.ui.pages.up_list_page import UpCardDelegate, UpListPage
 
 
 @pytest.fixture
@@ -26,9 +26,11 @@ def test_up_list_page_initialization(qtbot):
     page = UpListPage()
     qtbot.addWidget(page)
 
-    assert page.search_input.placeholderText() == "Filter by UP name..."
+    assert page.search_input.placeholderText() == "搜索UP主..."
     assert isinstance(page.list_view, QListView)
+    assert isinstance(page.delegate, UpCardDelegate)
     assert page.source_model.rowCount() == 0
+    assert page.empty_state is not None
 
 
 def test_up_list_page_loads_data(qtbot, mock_db_connection, mock_following_repo):

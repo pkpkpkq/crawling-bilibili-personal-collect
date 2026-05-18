@@ -4,7 +4,7 @@ from PySide6.QtCore import QModelIndex, QPersistentModelIndex, QRect, QSize, Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import QStyleOptionViewItem, QStyledItemDelegate
 
-from app.theme import BorderRadius, Color, Spacing, Typography
+from app.theme import BorderRadius, Color, Spacing, Typography, LINK_COLOR_DEFAULT, LINK_COLOR_HOVER
 
 
 class BaseCardDelegate(QStyledItemDelegate):
@@ -105,7 +105,7 @@ class BaseCardDelegate(QStyledItemDelegate):
             link_font.setUnderline(False)
             painter.setFont(link_font)
             is_hovered = self._hovered_link_key == key
-            painter.setPen(QColor(Color.TERRACOTTA_BRAND.value if is_hovered else Color.DARK_WARM.value))
+            painter.setPen(QColor(LINK_COLOR_HOVER if is_hovered else LINK_COLOR_DEFAULT))
             metrics = painter.fontMetrics()
             link_width = metrics.horizontalAdvance(link_text)
             link_height = metrics.height()

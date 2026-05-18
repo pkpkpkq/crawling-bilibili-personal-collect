@@ -1,4 +1,5 @@
 from enum import Enum
+from pathlib import Path
 
 
 class Color(str, Enum):
@@ -22,7 +23,7 @@ class Color(str, Enum):
     BORDER_WARM = "#e8e6dc"
     BORDER_DARK = "#30302e"
     RING_WARM = "#d1cfc5"
-    CARD_BORDER = RING_WARM
+    CARD_BORDER = BORDER_WARM
 
 
 class Typography:
@@ -61,11 +62,11 @@ class Spacing:
     SCALE_24 = 24
     SCALE_30 = 30
     SCALE_32 = 32
-    PAGE_MARGIN = 16
+    PAGE_MARGIN = 24
 
     BUTTON_PADDING_X = 16
     BUTTON_PADDING_Y = 8
-    CARD_PADDING = 12
+    CARD_PADDING = 20
     SECTION_SPACING = 80
 
 
@@ -98,6 +99,10 @@ LINK_COLOR_HOVER = Color.TERRACOTTA_BRAND.value
 
 
 def get_base_stylesheet() -> str:
+    icons_dir = Path(__file__).parent / "ui" / "icons"
+    arrow_up_path = (icons_dir / "arrow_up.svg").as_posix()
+    arrow_down_path = (icons_dir / "arrow_down.svg").as_posix()
+
     return f"""
         /* === Base Widgets === */
         QWidget {{
@@ -145,6 +150,25 @@ def get_base_stylesheet() -> str:
 
         QPushButton#secondary-btn:hover {{
             background-color: {Color.WARM_SAND.value};
+        }}
+
+        QPushButton#back-btn {{
+            background-color: transparent;
+            border: 1.5px solid {Color.TERRACOTTA_BRAND.value};
+            color: {Color.TERRACOTTA_BRAND.value};
+            border-radius: {BorderRadius.SUBTLE}px;
+            padding: 6px 16px;
+            font-weight: 500;
+        }}
+
+        QPushButton#back-btn:hover {{
+            background-color: {Color.TERRACOTTA_BRAND.value};
+            color: {Color.IVORY.value};
+        }}
+
+        QPushButton#back-btn:disabled {{
+            border-color: {Color.WARM_SAND.value};
+            color: {Color.STONE_GRAY.value};
         }}
 
         /* === Labels === */
@@ -436,57 +460,67 @@ def get_base_stylesheet() -> str:
             background-color: {Color.IVORY.value};
             border: 1px solid {Color.BORDER_CREAM.value};
             border-radius: {BorderRadius.ROUNDED}px;
-            padding: 4px 8px;
+            padding: 4px 28px 4px 8px;
             color: {Color.ANTHROPIC_NEAR_BLACK.value};
         }}
 
-QSpinBox:focus, QDoubleSpinBox:focus {{
-    border: 1px solid {Color.TERRACOTTA_BRAND.value};
-}}
+        QSpinBox:focus, QDoubleSpinBox:focus {{
+            border: 1px solid {Color.TERRACOTTA_BRAND.value};
+        }}
 
-QSpinBox::up-button, QDoubleSpinBox::up-button {{
-    subcontrol-origin: border;
-    subcontrol-position: top right;
-    width: 20px;
-    border-left: 1px solid {Color.BORDER_CREAM.value};
-    border-radius: {BorderRadius.SUBTLE}px;
-}}
+        QSpinBox::up-button, QDoubleSpinBox::up-button {{
+            subcontrol-origin: padding;
+            subcontrol-position: top right;
+            width: 20px;
+            border-left: 1px solid {Color.BORDER_CREAM.value};
+            border-radius: {BorderRadius.SUBTLE}px;
+        }}
 
-QSpinBox::down-button, QDoubleSpinBox::down-button {{
-    subcontrol-origin: border;
-    subcontrol-position: bottom right;
-    width: 20px;
-    border-left: 1px solid {Color.BORDER_CREAM.value};
-    border-top: 1px solid {Color.BORDER_CREAM.value};
-    border-radius: {BorderRadius.SUBTLE}px;
-}}
+        QSpinBox::down-button, QDoubleSpinBox::down-button {{
+            subcontrol-origin: padding;
+            subcontrol-position: bottom right;
+            width: 20px;
+            border-left: 1px solid {Color.BORDER_CREAM.value};
+            border-top: 1px solid {Color.BORDER_CREAM.value};
+            border-radius: {BorderRadius.SUBTLE}px;
+        }}
 
-QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {{
-    width: 8px;
-    height: 8px;
-    border-left: 2px solid {Color.CHARCOAL_WARM.value};
-    border-top: 2px solid {Color.CHARCOAL_WARM.value};
-    margin-right: 4px;
-}}
+        QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {{
+            image: url("{arrow_up_path}");
+            width: 14px;
+            height: 14px;
+        }}
 
-QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {{
-    width: 8px;
-    height: 8px;
-    border-left: 2px solid {Color.CHARCOAL_WARM.value};
-    border-bottom: 2px solid {Color.CHARCOAL_WARM.value};
-    margin-right: 4px;
-}}
+        QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {{
+            image: url("{arrow_down_path}");
+            width: 14px;
+            height: 14px;
+        }}
 
-QDateEdit {{
+        QDateEdit {{
             background-color: {Color.IVORY.value};
             border: 1px solid {Color.BORDER_CREAM.value};
             border-radius: {BorderRadius.ROUNDED}px;
             padding: 4px 8px;
             color: {Color.ANTHROPIC_NEAR_BLACK.value};
+            font-size: {Typography.SIZE_BODY_STANDARD}px;
         }}
 
         QDateEdit:focus {{
             border: 1px solid {Color.TERRACOTTA_BRAND.value};
+        }}
+
+        QDateEdit::drop-down {{
+            subcontrol-origin: padding;
+            subcontrol-position: center right;
+            width: 20px;
+            border: none;
+        }}
+
+        QDateEdit::down-arrow {{
+            image: url("{arrow_down_path}");
+            width: 14px;
+            height: 14px;
         }}
 
         /* === Tool Tips === */
@@ -572,6 +606,7 @@ QWidget#surface-card {{
 /* === Calendar Widget === */
 QCalendarWidget QWidget {{
     background-color: {Color.IVORY.value};
+    border-radius: {BorderRadius.ROUNDED}px;
 }}
 
 QCalendarWidget QToolButton {{
@@ -579,28 +614,91 @@ QCalendarWidget QToolButton {{
     color: {Color.ANTHROPIC_NEAR_BLACK.value};
     border-radius: {BorderRadius.ROUNDED}px;
     padding: 4px 8px;
+    font-family: {Typography.FONT_FAMILY_SANS};
+    font-size: {Typography.SIZE_BODY_STANDARD}px;
 }}
 
 QCalendarWidget QToolButton:hover {{
     background-color: {Color.WARM_SAND.value};
 }}
 
-QCalendarWidget QAbstractItemView {{
+QCalendarWidget QTableView {{
     background-color: {Color.IVORY.value};
     selection-background-color: {Color.TERRACOTTA_BRAND.value};
     selection-color: {Color.IVORY.value};
     border-radius: {BorderRadius.ROUNDED}px;
+    border: none;
+    outline: none;
 }}
 
-QCalendarWidget QSpinBox {{
-    background-color: {Color.IVORY.value};
-    border: 1px solid {Color.BORDER_CREAM.value};
-    border-radius: {BorderRadius.GENEROUS}px;
+QCalendarWidget QTableView::item {{
+    color: {Color.ANTHROPIC_NEAR_BLACK.value};
+    padding: 4px;
+    border-radius: {BorderRadius.SUBTLE}px;
 }}
+
+QCalendarWidget QTableView::item:selected {{
+    background-color: {Color.TERRACOTTA_BRAND.value};
+    color: {Color.IVORY.value};
+}}
+
+QCalendarWidget QTableView::item:hover {{
+    background-color: {Color.WARM_SAND.value};
+}}
+
+        QCalendarWidget QSpinBox {{
+            background-color: {Color.IVORY.value};
+            border: 1px solid {Color.BORDER_CREAM.value};
+            border-radius: {BorderRadius.GENEROUS}px;
+            font-size: {Typography.SIZE_BODY_STANDARD}px;
+        }}
 
 QCalendarWidget QMenu {{
     background-color: {Color.IVORY.value};
     border: 1px solid {Color.BORDER_CREAM.value};
     border-radius: {BorderRadius.ROUNDED}px;
 }}
+
+QCalendarWidget QWidget#qt_calendar_navigationbar {{
+    background-color: {Color.PARCHMENT.value};
+    border-bottom: 1px solid {Color.BORDER_CREAM.value};
+}}
+
+        /* === Pagination Bar === */
+        QWidget#pagination-bar {{
+            background: transparent;
+        }}
+
+        QPushButton#pagination-prev-btn,
+        QPushButton#pagination-next-btn {{
+            background-color: {Color.WARM_SAND.value};
+            color: {Color.CHARCOAL_WARM.value};
+            border: 1px solid {Color.BORDER_CREAM.value};
+            border-radius: {BorderRadius.SUBTLE}px;
+            padding: 6px 12px;
+        }}
+
+        QPushButton#pagination-prev-btn:hover,
+        QPushButton#pagination-next-btn:hover {{
+            background-color: {Color.RING_WARM.value};
+        }}
+
+        QPushButton#pagination-prev-btn:disabled,
+        QPushButton#pagination-next-btn:disabled {{
+            background-color: {Color.IVORY.value};
+            color: {Color.STONE_GRAY.value};
+            border: 1px solid {Color.BORDER_CREAM.value};
+        }}
+
+        /* === Surface Card === */
+        QWidget#surface-card {{
+            background-color: {Color.PURE_WHITE.value};
+            border: 1px solid {Color.BORDER_CREAM.value};
+            border-radius: {BorderRadius.ROUNDED}px;
+        }}
+
+        /* === Chart Views === */
+        QChartView {{
+            background-color: transparent;
+        }}
 """

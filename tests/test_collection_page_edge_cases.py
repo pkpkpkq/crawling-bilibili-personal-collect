@@ -15,6 +15,7 @@ def test_collection_page_empty_rows(qtbot, empty_cache):
 
     page.load_data(1, "Empty", [])
 
+    assert page.page_stack.currentWidget() == page.detail_page
     assert page.paged_proxy.rowCount() == 0
     assert page.paged_proxy.pageCount() == 1
     assert "0" in page.page_label.text()
@@ -47,11 +48,10 @@ def test_collection_page_null_history(qtbot, empty_cache):
     page.load_data(1, "C", rows)
 
     idx = page.paged_proxy.index(0, 0)
-    page.table.clicked.emit(idx)
+    page.delegate.toggleExpanded(idx)
 
-    assert page._expanded_widget is not None
-    assert page._expanded_widget.layout().count() >= 2
-    assert page._expanded_widget.layout().itemAt(1).widget().text() == "暂无历史记录"
+    assert page.delegate._is_expanded(idx)
+    assert "暂无历史记录" in page.delegate._expanded_content(idx)
 
 
 def test_collection_page_invalid_date_clearing(qtbot, empty_cache):

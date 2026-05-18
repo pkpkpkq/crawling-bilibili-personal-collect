@@ -198,7 +198,7 @@ class GlobalSearchFilterProxyModel(QSortFilterProxyModel):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._search_text = ""
-        self._latest_favorite_desc = True
+        self._sort_key = "fav_desc"  # default: latest fav time descending
         self.setDynamicSortFilter(True)
         self.sort(0, Qt.SortOrder.AscendingOrder)
 
@@ -219,10 +219,13 @@ class GlobalSearchFilterProxyModel(QSortFilterProxyModel):
         self.invalidate()
 
     def setSortByLatestFavorite(self, descending: bool = True) -> None:  # noqa: N802
-        descending = bool(descending)
-        if self._latest_favorite_desc == descending:
+        key = "fav_desc" if descending else "fav_asc"
+        self.setSortKey(key)
+
+    def setSortKey(self, key: str) -> None:  # noqa: N802
+        if self._sort_key == key:
             return
-        self._latest_favorite_desc = descending
+        self._sort_key = key
         self.invalidate()
         self.sort(0, Qt.SortOrder.AscendingOrder)
 
@@ -247,6 +250,20 @@ class GlobalSearchFilterProxyModel(QSortFilterProxyModel):
         left_row = left.row()
         right_row = right.row()
 
+        if self._sort_key in ("play_desc", "collect_desc"):
+            raw_field = "play_count" if self._sort_key == "play_desc" else "collect_count"
+            left_raw = self._role_value(left_row, GlobalSearchRowRole.RAW_ROW)
+            right_raw = self._role_value(right_row, GlobalSearchRowRole.RAW_ROW)
+            left_val = int((left_raw or {}).get(raw_field, 0) or 0)
+            right_val = int((right_raw or {}).get(raw_field, 0) or 0)
+            if left_val != right_val:
+                return left_val > right_val
+            # Fallback to title
+            left_title = casefold_text(self._role_value(left_row, GlobalSearchRowRole.TITLE))
+            right_title = casefold_text(self._role_value(right_row, GlobalSearchRowRole.TITLE))
+            return left_title < right_title
+
+        # Default: sort by latest fav time
         left_time = parse_datetime(
             self._role_value(left_row, GlobalSearchRowRole.LATEST_FAV_TIME)
         )
@@ -255,7 +272,7 @@ class GlobalSearchFilterProxyModel(QSortFilterProxyModel):
         )
 
         if left_time and right_time and left_time != right_time:
-            if self._latest_favorite_desc:
+            if self._sort_key == "fav_desc":
                 return left_time > right_time
             return left_time < right_time
 

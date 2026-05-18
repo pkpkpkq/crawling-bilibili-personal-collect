@@ -46,6 +46,7 @@ def test_collection_page_search(qtbot, sample_rows):
     qtbot.addWidget(page)
 
     page.load_data(1, "Dev", sample_rows)
+    assert page.page_stack.currentWidget() == page.detail_page
     assert page.paged_proxy.rowCount() == 2
 
     page.search_input.setText("react")
@@ -85,15 +86,15 @@ def test_collection_page_sorting(qtbot, sample_rows):
 
     page.sort_combo.setCurrentIndex(page.sort_combo.findData("play_desc"))
     first_row_bv = page.paged_proxy.data(
-        page.paged_proxy.index(0, 1), Qt.ItemDataRole.DisplayRole
+        page.paged_proxy.index(0, 2), Qt.ItemDataRole.DisplayRole
     )
-    assert first_row_bv == "BV2def"  # 2000 vs 1000
+    assert first_row_bv == "BV2def"
 
     page.sort_combo.setCurrentIndex(page.sort_combo.findData("duration_desc"))
     first_row_bv = page.paged_proxy.data(
-        page.paged_proxy.index(0, 1), Qt.ItemDataRole.DisplayRole
+        page.paged_proxy.index(0, 2), Qt.ItemDataRole.DisplayRole
     )
-    assert first_row_bv == "BV2def"  # 1200 vs 600
+    assert first_row_bv == "BV2def"
 
 
 def test_collection_page_history_expansion(qtbot, sample_rows):
@@ -101,26 +102,63 @@ def test_collection_page_history_expansion(qtbot, sample_rows):
     page = CollectionPage(cache_service=cache)
     qtbot.addWidget(page)
 
-    # Add history
     sample_rows[0]["history"] = [
         {"action": "add", "time": "2023-01-01", "collection_name": "Dev"}
     ]
 
     page.load_data(1, "Dev", sample_rows)
 
-    # Default is collapsed
-    assert page._expanded_row == -1
-
-    # Click row 0
     idx = page.paged_proxy.index(0, 0)
-    page.table.clicked.emit(idx)
+    page.delegate.toggleExpanded(idx)
 
-    # Verify expanded
-    assert page._expanded_row == 0
-    assert page._expanded_widget is not None
-    assert page.table.rowHeight(0) == 200
+    assert page.delegate._is_expanded(idx)
+    assert "[2023-01-01] 添加 | 收藏夹: Dev" in page.delegate._expanded_content(idx)
 
-    # Click again to collapse
-    page.table.clicked.emit(idx)
-    assert page._expanded_row == -1
-    assert page._expanded_widget is None
+    page.delegate.toggleExpanded(idx)
+    assert not page.delegate._is_expanded(idx)
+
+
+def test_collection_page_emits_selection_signal(qtbot):
+    cache = CacheService()
+    page = CollectionPage(cache_service=cache)
+    qtbot.addWidget(page)
+
+    page.set_collection_list([{"id": 3612401255, "name": "My List"}])
+    with qtbot.waitSignal(page.collection_selected, timeout=1000) as blocker:
+        page.collection_list.itemClicked.emit(page.collection_list.item(0))
+
+    assert blocker.args == [3612401255, "My List"]
+
+def test_collection_page_history_supports_repository_shape(qtbot, sample_rows):
+    cache = CacheService()
+    page = CollectionPage(cache_service=cache)
+    qtbot.addWidget(page)
+
+    sample_rows[0]["history"] = [
+        {"type": "add", "collection": "Dev", "time": "2023-01-01 10:00:00"}
+    ]
+
+    page.load_data(1, "Dev", sample_rows)
+    idx = page.paged_proxy.index(0, 0)
+    page.delegate.toggleExpanded(idx)
+
+    assert "[2023-01-01 10:00:00] 添加 | 收藏夹: Dev" in page.delegate._expanded_content(idx)
+
+
+def test_collection_page_history_sorts_latest_first(qtbot, sample_rows):
+    cache = CacheService()
+    page = CollectionPage(cache_service=cache)
+    qtbot.addWidget(page)
+
+    sample_rows[0]["history"] = [
+        {"type": "add", "collection": "Dev", "time": "2023-01-01 10:00:00"},
+        {"type": "remove", "collection": "Dev", "time": "2023-01-02 11:00:00"},
+    ]
+
+    page.load_data(1, "Dev", sample_rows)
+    idx = page.paged_proxy.index(0, 0)
+    page.delegate.toggleExpanded(idx)
+
+    lines = page.delegate._expanded_content(idx).splitlines()
+    assert lines[1] == "[2023-01-02 11:00:00] 移除 | 收藏夹: Dev"
+    assert lines[2] == "[2023-01-01 10:00:00] 添加 | 收藏夹: Dev"

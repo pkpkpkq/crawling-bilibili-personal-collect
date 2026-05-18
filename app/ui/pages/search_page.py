@@ -127,7 +127,8 @@ class SearchVideoCardDelegate(BaseCardDelegate):
             link_font.setWeight(QFont.Weight.Medium)
             painter.setFont(link_font)
             up_is_hovered = self._up_hovered_key == key
-            painter.setPen(QColor(Color.TERRACOTTA_BRAND.value if up_is_hovered else Color.DARK_WARM.value))
+            from app.theme import LINK_COLOR_DEFAULT, LINK_COLOR_HOVER
+            painter.setPen(QColor(LINK_COLOR_HOVER if up_is_hovered else LINK_COLOR_DEFAULT))
             metrics = painter.fontMetrics()
             up_x = bv_rect.right() + Spacing.SCALE_20
             up_width = metrics.horizontalAdvance(up_text)

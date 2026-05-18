@@ -25,10 +25,12 @@ class CollectionRowRole(IntEnum):
     COLLECTION_NAME = RAW_ROW + 13
     LATEST_COLLECTION = RAW_ROW + 14
     HISTORY = RAW_ROW + 15
+    COVER_PATH = RAW_ROW + 16
 
 
 class CollectionRowsModel(QAbstractTableModel):
     COLUMNS = (
+        ("cover_path", "封面"),
         ("title", "标题"),
         ("bv_id", "BV号"),
         ("up_name", "UP主"),
@@ -57,6 +59,7 @@ class CollectionRowsModel(QAbstractTableModel):
         CollectionRowRole.COLLECTION_NAME: b"collection_name",
         CollectionRowRole.LATEST_COLLECTION: b"latest_collection",
         CollectionRowRole.HISTORY: b"history",
+        CollectionRowRole.COVER_PATH: b"cover_path",
     }
 
     def __init__(self, rows: Iterable[dict[str, Any]] | None = None, parent=None):
@@ -101,7 +104,9 @@ class CollectionRowsModel(QAbstractTableModel):
     def headerData(self, section, orientation, role=Qt.ItemDataRole.DisplayRole):  # noqa: N802
         if role != Qt.ItemDataRole.DisplayRole:
             return None
-        if orientation == Qt.Orientation.Horizontal and 0 <= section < len(self.COLUMNS):
+        if orientation == Qt.Orientation.Horizontal and 0 <= section < len(
+            self.COLUMNS
+        ):
             return self.COLUMNS[section][1]
         return super().headerData(section, orientation, role)
 
@@ -154,5 +159,7 @@ class CollectionRowsModel(QAbstractTableModel):
         if role == int(CollectionRowRole.HISTORY):
             history = row.get("history")
             return history if isinstance(history, list) else []
+        if role == int(CollectionRowRole.COVER_PATH):
+            return row.get("cover_path", "")
 
         return None

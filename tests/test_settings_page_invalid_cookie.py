@@ -19,4 +19,4 @@ def test_settings_page_invalid_cookie(qtbot, mocker):
     mock_save.assert_not_called()
     mock_msgbox.assert_called_once()
     args = mock_msgbox.call_args[0]
-    assert "Invalid Cookie" in args[1]
+    assert "Cookie 无效" in args[1]

@@ -65,7 +65,7 @@ class CrawlPage(QWidget):
         self.status_label = StatusBadge(strings.CRAWL_STATUS_IDLE, "info")
         status_row.addWidget(self.status_label)
 
-        self.progress_label = QLabel("\u8fdb\u5ea6: 0/0")
+        self.progress_label = QLabel("进度: 0/0")
         status_row.addWidget(self.progress_label)
 
         self.progress_bar = QProgressBar()
@@ -118,11 +118,11 @@ class CrawlPage(QWidget):
         self._log_panel.append_log(message)
 
     def _update_summary_labels(self, stats: Mapping[str, Any], duration_seconds: float) -> None:
-        self.stat_total_label.setText(f"\u603b\u89c6\u9891: {int(stats.get('total', 0))}")
-        self.stat_new_label.setText(f"\u65b0\u589e: {int(stats.get('new', 0))}")
-        self.stat_invalid_label.setText(f"\u5931\u6548: {int(stats.get('invalid', 0))}")
-        self.stat_unfav_label.setText(f"\u53d6\u6d88\u6536\u85cf: {int(stats.get('unfav', 0))}")
-        self.stat_duration_label.setText(f"\u8017\u65f6: {float(duration_seconds):.2f}s")
+        self.stat_total_label.setText(f"总视频: {int(stats.get('total', 0))}")
+        self.stat_new_label.setText(f"新增: {int(stats.get('new', 0))}")
+        self.stat_invalid_label.setText(f"失效: {int(stats.get('invalid', 0))}")
+        self.stat_unfav_label.setText(f"取消收藏: {int(stats.get('unfav', 0))}")
+        self.stat_duration_label.setText(f"耗时: {float(duration_seconds):.2f}s")
 
     @Slot()
     def start_crawl(self) -> None:
@@ -133,15 +133,15 @@ class CrawlPage(QWidget):
             uid, cookie, settings = config_service.load_config()
         except Exception as exc:  # pylint: disable=broad-except
             self.status_label.set_status(strings.CRAWL_STATUS_CONFIG_ERROR, "error")
-            self._append_log(f"\u914d\u7f6e\u52a0\u8f7d\u5931\u8d25: {exc}")
+            self._append_log(f"配置加载失败: {exc}")
             return
 
         self.status_label.set_status(strings.CRAWL_STATUS_RUNNING, "info")
-        self.progress_label.setText("\u8fdb\u5ea6: 0/0")
+        self.progress_label.setText("进度: 0/0")
         self.progress_bar.setRange(0, 1)
         self.progress_bar.setValue(0)
         self._update_summary_labels({}, 0.0)
-        self._append_log("\u5f00\u59cb\u6267\u884c\u722c\u53d6\u4efb\u52a1...")
+        self._append_log("开始执行爬取任务...")
 
         worker = self._create_worker(uid, cookie, settings)
         self._worker = worker
@@ -167,17 +167,18 @@ class CrawlPage(QWidget):
     @Slot()
     def clear_logs(self) -> None:
         self._log_panel.clear_logs()
+        self.status_label.set_status(strings.CRAWL_STATUS_IDLE, "info")
 
     @Slot(int, int)
     def _on_progress_changed(self, current: int, total: int) -> None:
         if total <= 0:
             self.progress_bar.setRange(0, 0)
-            self.progress_label.setText("\u8fdb\u5ea6: 0/0")
+            self.progress_label.setText("进度: 0/0")
             return
 
         self.progress_bar.setRange(0, total)
         self.progress_bar.setValue(max(0, min(current, total)))
-        self.progress_label.setText(f"\u8fdb\u5ea6: {current}/{total}")
+        self.progress_label.setText(f"进度: {current}/{total}")
 
     @Slot(object)
     def _on_crawl_completed(self, result) -> None:
@@ -188,11 +189,11 @@ class CrawlPage(QWidget):
 
         if success:
             self.status_label.set_status(strings.CRAWL_STATUS_COMPLETE, "success")
-            self._append_log("\u722c\u53d6\u4efb\u52a1\u5b8c\u6210\u3002")
+            self._append_log("爬取任务完成")
         else:
             self.status_label.set_status(strings.CRAWL_STATUS_FAILED, "error")
             if error:
-                self._append_log(f"\u722c\u53d6\u5931\u8d25: {error}")
+                self._append_log(f"爬取失败: {error}")
 
         self._update_summary_labels(stats, duration_seconds)
         self.crawl_completed.emit(result)
@@ -200,7 +201,7 @@ class CrawlPage(QWidget):
     @Slot(str)
     def _on_crawl_error(self, message: str) -> None:
         self.status_label.set_status(strings.CRAWL_STATUS_FAILED, "error")
-        self._append_log(f"\u722c\u53d6\u7ebf\u7a0b\u5f02\u5e38: {message}")
+        self._append_log(f"爬取线程异常: {message}")
 
     @Slot()
     def _on_worker_finished(self) -> None:

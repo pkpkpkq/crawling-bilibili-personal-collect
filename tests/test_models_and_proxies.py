@@ -30,6 +30,7 @@ def _collection_rows():
             "collection_name": "Tech Picks",
             "latest_collection": "Tech Picks",
             "history": [{"type": "add", "collection": "Tech Picks", "time": "2024-01-01 08:00:00"}],
+            "cover_path": "cache/covers/BV001.jpg",
         },
         {
             "title": "Bravo Current",
@@ -46,6 +47,7 @@ def _collection_rows():
             "collection_name": "Tech Picks",
             "latest_collection": "Tech Picks",
             "history": [{"type": "add", "collection": "Tech Picks", "time": "2024-02-10 09:00:00"}],
+            "cover_path": "cache/covers/BV002.jpg",
         },
         {
             "title": "Charlie Invalid",
@@ -62,6 +64,7 @@ def _collection_rows():
             "collection_name": "Tech Picks",
             "latest_collection": "Tech Picks",
             "history": [{"type": "add", "collection": "Tech Picks", "time": "2024-03-01 10:00:00"}],
+            "cover_path": "cache/covers/BV003.jpg",
         },
         {
             "title": "Delta Moved",
@@ -78,6 +81,7 @@ def _collection_rows():
             "collection_name": "Tech Picks",
             "latest_collection": "Music Box",
             "history": [{"type": "add", "collection": "Tech Picks", "time": "2024-01-15 11:00:00"}],
+            "cover_path": "cache/covers/BV004.jpg",
         },
     ]
 
@@ -145,13 +149,14 @@ def test_collection_rows_model_exposes_roles_and_display_data():
     model = CollectionRowsModel(rows)
 
     assert model.rowCount() == len(rows)
-    assert model.columnCount() == 9
+    assert model.columnCount() == 10
 
-    title_index = model.index(0, 0)
+    title_index = model.index(0, 1)
     assert model.data(title_index) == "Alpha One"
+    assert model.data(model.index(0, 0), int(CollectionRowRole.COVER_PATH)) == "cache/covers/BV001.jpg"
     assert model.data(title_index, int(CollectionRowRole.BV_ID)) == "BV001"
     assert model.data(title_index, int(CollectionRowRole.IS_CURRENT)) is True
-    assert model.data(model.index(2, 0), int(CollectionRowRole.IS_CURRENT)) is False
+    assert model.data(model.index(2, 1), int(CollectionRowRole.IS_CURRENT)) is False
 
 
 def test_collection_filter_proxy_search_current_toggle_and_date_ranges(qapp):

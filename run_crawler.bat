@@ -1,32 +1,31 @@
-@echo off
-chcp 65001 >nul
-title Bilibili 收藏夹爬取工具（桌面版）
-
-echo ========================================
-echo   Bilibili 收藏夹爬取工具（桌面版）
-echo ========================================
-echo.
-
-cd /d "%~dp0"
-
-:: 检查 Python 是否可用
-python --version >nul 2>&1
-if errorlevel 1 (
-    echo [错误] 未找到 Python，请先安装 Python 并将其添加到 PATH。
-    exit /b 1
-)
-
-:: 启动桌面应用
-echo [开始] 启动桌面应用...
-echo.
-python desktop.py
-
-if errorlevel 1 (
-    echo.
-    echo [错误] 桌面应用启动失败，请查看控制台输出。
-    exit /b 1
-)
-
-echo.
-echo [完成] 桌面应用已退出！
-exit /b 0
+@echo off
+chcp 65001 >nul
+title Bilibili Collection Crawler
+
+echo ========================================
+echo   Bilibili Collection Crawler
+echo ========================================
+echo.
+
+cd /d "%~dp0"
+
+:: Check if Python is available
+python --version >nul 2>&1
+if errorlevel 1 (
+    echo [Error] Python not found. Please install Python and add it to PATH.
+    exit /b 1
+)
+
+echo [Start] Launching headless crawler...
+echo.
+python main.py
+
+if errorlevel 1 (
+    echo.
+    echo [Error] Execution failed. Please check the console output.
+    exit /b 1
+)
+
+echo.
+echo [Done] Exited successfully!
+exit /b 0

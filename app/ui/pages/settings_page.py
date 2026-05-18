@@ -59,6 +59,9 @@ class SettingsPage(QWidget):
         layout.addWidget(self._page_header)
 
         sync_card = SurfaceCard()
+        sync_title = QLabel("同步设置")
+        sync_title.setObjectName("h2")
+        sync_card.card_layout.addWidget(sync_title)
         form_layout = QFormLayout()
         form_layout.setSpacing(Spacing.SCALE_12)
 
@@ -120,6 +123,9 @@ class SettingsPage(QWidget):
         layout.addWidget(sync_card)
 
         cookie_card = SurfaceCard()
+        cookie_title = QLabel("Cookie 认证")
+        cookie_title.setObjectName("h2")
+        cookie_card.card_layout.addWidget(cookie_title)
 
         cookie_label = QLabel(strings.LABEL_MANUAL_COOKIE)
         cookie_label.setToolTip(
@@ -144,6 +150,9 @@ class SettingsPage(QWidget):
         layout.addWidget(cookie_card)
 
         qr_card = SurfaceCard()
+        qr_title = QLabel("扫码登录")
+        qr_title.setObjectName("h2")
+        qr_card.card_layout.addWidget(qr_title)
 
         qr_label = QLabel(strings.LABEL_QR_LOGIN)
         qr_label.setToolTip(

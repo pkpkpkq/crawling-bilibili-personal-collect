@@ -109,12 +109,14 @@ def test_search_page_click_through(qtbot, sample_rows, monkeypatch):
 
     monkeypatch.setattr(webbrowser, "open", mock_open)
 
-    index_bv = page.paged_proxy.index(0, 1)
-    page._on_table_clicked(index_bv)
+    monkeypatch.setattr(page.delegate, "hitTestLink", lambda _pos, _index: "bv")
+    index_bv = page.paged_proxy.index(0, 0)
+    page._on_list_clicked(index_bv)
     assert opened_url == "https://www.bilibili.com/video/BV1xx"
 
     page.source_model._rows[0]["up_id"] = "12345"
 
-    index_up = page.paged_proxy.index(0, 2)
-    page._on_table_clicked(index_up)
+    monkeypatch.setattr(page.delegate, "hitTestLink", lambda _pos, _index: "up")
+    index_up = page.paged_proxy.index(0, 0)
+    page._on_list_clicked(index_up)
     assert opened_url == "https://space.bilibili.com/12345"

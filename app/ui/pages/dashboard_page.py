@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QFrame,
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QPainter, QFont, QColor
 from PySide6.QtCharts import (
     QChart,
@@ -65,6 +65,8 @@ def _shorten_month(month_str: str) -> str:
 
 
 class DashboardPage(QWidget):
+    search_requested = Signal(str)  # emits text to search for
+
     def __init__(self, db_conn, parent=None):
         super().__init__(parent)
         self.db_conn = db_conn
@@ -108,27 +110,29 @@ class DashboardPage(QWidget):
         charts_layout1 = QHBoxLayout()
         charts_layout1.setSpacing(Spacing.SCALE_24)
 
+        chart_card1 = SurfaceCard()
         self.collection_chart_view = QChartView()
         self.collection_chart_view.setRenderHint(QPainter.RenderHint.Antialiasing)
-        self.collection_chart_view.setMinimumHeight(220)
-        charts_layout1.addWidget(self.collection_chart_view, 1)
+        self.collection_chart_view.setMinimumHeight(260)
+        chart_card1.card_layout.addWidget(self.collection_chart_view)
+        charts_layout1.addWidget(chart_card1, 1)
 
+        chart_card2 = SurfaceCard()
         self.duration_chart_view = QChartView()
         self.duration_chart_view.setRenderHint(QPainter.RenderHint.Antialiasing)
-        self.duration_chart_view.setMinimumHeight(220)
-        charts_layout1.addWidget(self.duration_chart_view, 1)
+        self.duration_chart_view.setMinimumHeight(260)
+        chart_card2.card_layout.addWidget(self.duration_chart_view)
+        charts_layout1.addWidget(chart_card2, 1)
 
         self.content_layout.addLayout(charts_layout1)
 
-        charts_layout2 = QHBoxLayout()
-        charts_layout2.setSpacing(Spacing.SCALE_24)
-
+        chart_card3 = SurfaceCard()
         self.trend_chart_view = QChartView()
         self.trend_chart_view.setRenderHint(QPainter.RenderHint.Antialiasing)
-        self.trend_chart_view.setMinimumHeight(220)
-        charts_layout2.addWidget(self.trend_chart_view, 1)
+        self.trend_chart_view.setMinimumHeight(260)
+        chart_card3.card_layout.addWidget(self.trend_chart_view)
 
-        self.content_layout.addLayout(charts_layout2)
+        self.content_layout.addWidget(chart_card3)
 
         # Insight Cards Row
         self.insight_layout = QHBoxLayout()
@@ -169,13 +173,27 @@ class DashboardPage(QWidget):
             empty = EmptyState(strings.EMPTY_NO_DATA)
             card.card_layout.addWidget(empty)
         else:
-            for item in items:
-                lbl = QLabel(item)
+            for item_text in items:
+                lbl = QLabel(item_text)
                 lbl.setWordWrap(True)
+                lbl.setCursor(Qt.CursorShape.PointingHandCursor)
+                lbl.setStyleSheet(
+                    f"QLabel {{ padding: 4px 0; }}"
+                    f"QLabel:hover {{ color: {Color.TERRACOTTA_BRAND.value}; }}"
+                )
+                lbl.mousePressEvent = lambda ev, t=item_text: self._on_insight_clicked(t)
                 card.card_layout.addWidget(lbl)
 
         card.card_layout.addStretch()
         return card
+
+    def _on_insight_clicked(self, text: str) -> None:
+        """Extract a searchable name from the insight item and emit signal."""
+        # Strip count suffix like " (123)" or " (by UP名)"
+        import re
+        clean = re.sub(r"\s*\(.*\)\s*$", "", text).strip()
+        if clean:
+            self.search_requested.emit(clean)
 
     def _apply_chart_theme(self, chart: QChart):
         chart.setBackgroundVisible(False)

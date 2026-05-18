@@ -1,7 +1,7 @@
 import webbrowser
 from typing import Any
 
-from PySide6.QtCore import QModelIndex, QRect, QSize, Qt, QEvent, Signal, Slot
+from PySide6.QtCore import QDate, QModelIndex, QRect, QSize, Qt, QEvent, Signal, Slot
 from PySide6.QtGui import QColor, QFont, QPainter, QPainterPath, QPen, QPixmap, QPolygon
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QMenu,
+    QMessageBox,
     QPushButton,
     QStackedWidget,
     QStyle,
@@ -31,6 +32,7 @@ from app.models import (
     PagedProxyModel,
 )
 from app.services.cache_service import CacheService
+from app.services.video_file_service import find_downloaded_video, open_local_video, delete_local_video
 from app.theme import BorderRadius, Color, Spacing, Typography, get_base_stylesheet
 from app.ui import strings
 from app.ui.components.card_delegate import BaseCardDelegate
@@ -49,6 +51,21 @@ def _history_text(item: dict[str, Any]) -> str:
         else strings.HISTORY_ACTION_REMOVE
     )
     return f"[{time}] {action_text} | {strings.HISTORY_COLLECTION_LABEL}: {collection}"
+
+
+class _CalendarWidget(QCalendarWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._date_edit = None
+
+    def set_date_edit(self, date_edit):
+        self._date_edit = date_edit
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if self._date_edit and self._date_edit.date() == self._date_edit.minimumDate():
+            today = QDate.currentDate()
+            self.setCurrentPage(today.year(), today.month())
 
 
 class CollectionVideoCardDelegate(BaseCardDelegate):
@@ -137,7 +154,9 @@ class CollectionVideoCardDelegate(BaseCardDelegate):
         is_invalid = bool(index.data(int(CollectionRowRole.IS_INVALID)))
         is_current = bool(index.data(int(CollectionRowRole.IS_CURRENT)))
         is_unfavorited = not is_current and not is_invalid
-        self._paint_badges(painter, option, text_rect, self._title_y, self._title_height, is_current, is_invalid, is_unfavorited)
+        bv_id = index.data(int(CollectionRowRole.BV_ID)) or ""
+        is_downloaded = bool(find_downloaded_video(bv_id))
+        self._paint_badges(painter, option, text_rect, self._title_y, self._title_height, is_current, is_invalid, is_unfavorited, is_downloaded)
         return y
 
     def _expanded_y_start(self, y, content_rect, index):
@@ -198,6 +217,7 @@ class CollectionVideoCardDelegate(BaseCardDelegate):
         is_current: bool,
         is_invalid: bool,
         is_unfavorited: bool,
+        is_downloaded: bool = False,
     ) -> None:
         badge_font = QFont(option.font)
         badge_font.setPixelSize(Typography.SIZE_LABEL)
@@ -207,6 +227,7 @@ class CollectionVideoCardDelegate(BaseCardDelegate):
         badges = (
             (strings.COLLECTION_CARD_BADGE_INVALID, Color.ERROR_CRIMSON, is_invalid),
             (strings.COLLECTION_CARD_BADGE_UNFAVORITED, Color.CHARCOAL_WARM, is_unfavorited),
+            ("已下载", Color.OLIVE_GRAY, is_downloaded),
         )
         for label, color, visible in badges:
             if not visible:
@@ -230,10 +251,10 @@ class CollectionFolderDelegate(QStyledItemDelegate):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
         card_rect = option.rect.adjusted(
-            Spacing.SCALE_8, Spacing.SCALE_6,
-            -Spacing.SCALE_8, -Spacing.SCALE_6,
+            Spacing.SCALE_8, Spacing.SCALE_4,
+            -Spacing.SCALE_8, -Spacing.SCALE_4,
         )
-        painter.setBrush(QColor(Color.IVORY.value))
+        painter.setBrush(QColor(Color.PURE_WHITE.value))
         painter.setPen(QPen(QColor(Color.WARM_SAND.value), 1))
         painter.drawRoundedRect(card_rect, BorderRadius.GENEROUS, BorderRadius.GENEROUS)
 
@@ -279,6 +300,8 @@ class CollectionPage(QWidget):
 
     back_requested = Signal()
     collection_selected = Signal(object, str)
+    download_requested = Signal(str)  # emits bv_id
+    collection_download_requested = Signal(object)  # emits collection_id
 
     def __init__(self, cache_service: CacheService, parent=None):
         super().__init__(parent)
@@ -308,7 +331,7 @@ class CollectionPage(QWidget):
 
         header_layout = QHBoxLayout()
         self.back_btn = QPushButton(strings.BTN_BACK)
-        self.back_btn.setObjectName("secondary-btn")
+        self.back_btn.setObjectName("back-btn")
         self.header = PageHeader(strings.PAGE_TITLE_COLLECTION)
         self.title_label = self.header.title_label
         header_layout.addWidget(self.back_btn)
@@ -342,6 +365,8 @@ class CollectionPage(QWidget):
         list_layout.addLayout(folder_sort_bar)
 
         self.collection_list.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.collection_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.collection_list.customContextMenuRequested.connect(self._on_collection_context_menu)
         self.collection_list.setSpacing(Spacing.SCALE_12)
         self.collection_list.setItemDelegate(CollectionFolderDelegate(self.collection_list))
         self.collection_list.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
@@ -436,15 +461,16 @@ class CollectionPage(QWidget):
         date_edit = QDateEdit()
         date_edit.setCalendarPopup(True)
         date_edit.setSpecialValueText(strings.DATE_UNSELECTED)
+        date_edit.setMinimumDate(QDate(1900, 1, 1))
+        date_edit.setMaximumDate(QDate.currentDate())
         date_edit.setDate(date_edit.minimumDate())
-        date_edit.installEventFilter(self)
-        return date_edit
 
-    def eventFilter(self, obj, event):
-        if event.type() == QEvent.Type.ChildAdded:
-            for cal in obj.findChildren(QCalendarWidget):
-                cal.setStyleSheet(get_base_stylesheet())
-        return super().eventFilter(obj, event)
+        cal = _CalendarWidget(date_edit)
+        cal.set_date_edit(date_edit)
+        cal.setStyleSheet(get_base_stylesheet())
+        date_edit.setCalendarWidget(cal)
+
+        return date_edit
 
     def _connect_signals(self) -> None:
         self.back_btn.clicked.connect(self._on_back_clicked)
@@ -496,6 +522,22 @@ class CollectionPage(QWidget):
     def _on_folder_sort_changed(self, _index: int) -> None:
         self._apply_folder_sort()
         self._update_collection_empty_state()
+
+    def _on_collection_context_menu(self, pos) -> None:
+        item = self.collection_list.itemAt(pos)
+        if not item:
+            return
+        collection_id = item.data(Qt.ItemDataRole.UserRole)
+        if not collection_id:
+            return
+            
+        menu = QMenu(self)
+        menu.setStyleSheet(get_base_stylesheet())
+        download_action = menu.addAction("下载整个收藏夹")
+        
+        action = menu.exec(self.collection_list.mapToGlobal(pos))
+        if action == download_action:
+            self.collection_download_requested.emit(collection_id)
 
     def show_collection_list(self) -> None:
         self.page_stack.setCurrentWidget(self.list_page)
@@ -631,7 +673,7 @@ class CollectionPage(QWidget):
         self.delegate.toggleExpanded(index)
 
     def contextMenuEvent(self, event):
-        """Right-click context menu: Copy BV号 / Open in browser."""
+        """Right-click context menu with download/delete and standard actions."""
         pos = self.list_view.viewport().mapFromGlobal(event.globalPos())
         index = self.list_view.indexAt(pos)
         if not index.isValid():
@@ -639,16 +681,47 @@ class CollectionPage(QWidget):
         bv_id = index.data(int(CollectionRowRole.BV_ID))
         if not bv_id:
             return
+
+        local_path = find_downloaded_video(bv_id)
         menu = QMenu(self)
         menu.setStyleSheet(get_base_stylesheet())
+
         copy_action = menu.addAction("复制 BV号")
         open_action = menu.addAction("在浏览器中打开")
+        menu.addSeparator()
+
+        if local_path:
+            open_local_action = menu.addAction("播放本地视频")
+            delete_local_action = menu.addAction("删除本地视频")
+            download_action = None
+        else:
+            download_action = menu.addAction("下载该视频")
+            open_local_action = None
+            delete_local_action = None
+
         action = menu.exec(event.globalPos())
+        if action is None:
+            return
         if action == copy_action:
             clipboard = QApplication.clipboard()
             clipboard.setText(bv_id)
         elif action == open_action:
             webbrowser.open(f"https://www.bilibili.com/video/{bv_id}")
+        elif action == download_action:
+            self.download_requested.emit(bv_id)
+        elif action == open_local_action and local_path:
+            open_local_video(local_path)
+        elif action == delete_local_action and local_path:
+            reply = QMessageBox.question(
+                self,
+                "确认删除",
+                f"确定要删除本地视频文件吗？\n{local_path}",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if reply == QMessageBox.StandardButton.Yes:
+                delete_local_video(local_path)
+                self.list_view.viewport().update()  # repaint to remove badge
 
     def _clear_expanded_cards(self) -> None:
         self.delegate._expanded_rows.clear()
