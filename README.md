@@ -82,8 +82,7 @@ pytest tests/ -v
 │   ├── models/          # 数据模型与代理层
 │   ├── workers/         # 长时间运行任务的 Qt Worker
 │   └── theme.py         # 主题与样式定义
-├── tests/               # pytest 测试套件
-└── Design.md            # UI 设计系统文档
+└── tests/               # pytest 测试套件
 ```
 
 ## 配置说明
