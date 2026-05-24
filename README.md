@@ -3,7 +3,7 @@
 爬取你的 Bilibili 收藏夹数据，提供 PySide6 桌面应用进行浏览与管理，支持全局搜索、数据统计仪表盘、视频下载等功能。
 基于[crawling-bilibili-personal-collect](https://github.com/cangkongman/crawling-bilibili-personal-collect)开发
 
-> **AI 声明**：本仓库由 AI 辅助生成并经人工审核。
+> **AI 声明**：本仓库由 AI 辅助生成
 
 ## 功能特性
 
@@ -18,7 +18,7 @@
 ## 环境要求
 
 - **Python**：>= 3.10（推荐使用 Python 3.12）
-- **操作系统**：Windows 10/11（桌面应用）、Linux / macOS（headless 模式）
+- **操作系统**：Windows、Linux、macOS
 - **外部依赖**：`yt-dlp` 需要可执行文件在系统 PATH 中，或在首次下载视频时自动安装
 
 ## 快速开始
@@ -56,12 +56,6 @@ python main.py
 ```
 
 `main.py` 保持为无界面的 headless 自动化入口，首次运行会自动初始化 SQLite 数据库。如果存在旧的 JSON 数据，会自动迁移。
-
-### 5. 运行测试
-
-```bash
-pytest tests/ -v
-```
 
 ## 项目结构
 
